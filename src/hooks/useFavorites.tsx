@@ -9,28 +9,47 @@ export const useFavorites = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (user) {
-      fetchFavorites();
-    } else {
-      setFavorites([]);
-      setLoading(false);
-    }
-  }, [user]);
+    let mounted = true;
+    
+    const loadFavorites = async () => {
+      if (user && mounted) {
+        await fetchFavorites();
+      } else if (!user && mounted) {
+        setFavorites([]);
+        setLoading(false);
+      }
+    };
+
+    loadFavorites();
+
+    return () => {
+      mounted = false;
+    };
+  }, [user?.id]); // Mudou para user?.id para evitar re-renders desnecessários
 
   const fetchFavorites = async () => {
     if (!user) return;
 
     try {
+      setLoading(true);
       const { data, error } = await supabase
         .from('favorites')
         .select('audiobook_id')
         .eq('user_id', user.id);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching favorites:', error);
+        throw error;
+      }
 
       setFavorites(data?.map(f => f.audiobook_id) || []);
     } catch (error) {
       console.error('Error fetching favorites:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível carregar os favoritos.",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
