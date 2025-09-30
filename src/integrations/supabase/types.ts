@@ -14,7 +14,199 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      audiobook_progress: {
+        Row: {
+          audiobook_id: string
+          duration_seconds: number
+          id: string
+          last_position: number
+          progress_seconds: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          audiobook_id: string
+          duration_seconds: number
+          id?: string
+          last_position?: number
+          progress_seconds?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          audiobook_id?: string
+          duration_seconds?: number
+          id?: string
+          last_position?: number
+          progress_seconds?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audiobook_progress_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      favorites: {
+        Row: {
+          audiobook_id: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          audiobook_id: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          audiobook_id?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "favorites_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      list_items: {
+        Row: {
+          added_at: string
+          audiobook_id: string
+          id: string
+          list_id: string
+        }
+        Insert: {
+          added_at?: string
+          audiobook_id: string
+          id?: string
+          list_id: string
+        }
+        Update: {
+          added_at?: string
+          audiobook_id?: string
+          id?: string
+          list_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "list_items_list_id_fkey"
+            columns: ["list_id"]
+            isOneToOne: false
+            referencedRelation: "user_lists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          display_name: string | null
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          id: string
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      reviews: {
+        Row: {
+          audiobook_id: string
+          created_at: string
+          id: string
+          rating: number
+          review_text: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          audiobook_id: string
+          created_at?: string
+          id?: string
+          rating: number
+          review_text?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          audiobook_id?: string
+          created_at?: string
+          id?: string
+          rating?: number
+          review_text?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reviews_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_lists: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_lists_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
