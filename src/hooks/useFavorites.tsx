@@ -56,7 +56,10 @@ export const useFavorites = () => {
   };
 
   const toggleFavorite = async (audiobookId: string) => {
+    console.log('🔄 toggleFavorite chamado:', { audiobookId, user: user?.id });
+    
     if (!user) {
+      console.log('❌ Usuário não está logado');
       toast({
         title: "Login necessário",
         description: "Faça login para adicionar favoritos.",
@@ -66,32 +69,44 @@ export const useFavorites = () => {
     }
 
     const isFavorite = favorites.includes(audiobookId);
+    console.log('📋 Estado atual:', { isFavorite, favorites });
 
     try {
       if (isFavorite) {
+        console.log('🗑️ Removendo dos favoritos...');
         const { error } = await supabase
           .from('favorites')
           .delete()
           .eq('user_id', user.id)
           .eq('audiobook_id', audiobookId);
 
-        if (error) throw error;
+        if (error) {
+          console.error('❌ Erro ao remover:', error);
+          throw error;
+        }
 
+        console.log('✅ Removido com sucesso');
         setFavorites(favorites.filter(id => id !== audiobookId));
         toast({
           title: "Removido dos favoritos",
           description: "Audiobook removido da sua lista de favoritos.",
         });
       } else {
-        const { error } = await supabase
+        console.log('➕ Adicionando aos favoritos...');
+        const { data, error } = await supabase
           .from('favorites')
           .insert({
             user_id: user.id,
             audiobook_id: audiobookId,
-          });
+          })
+          .select();
 
-        if (error) throw error;
+        if (error) {
+          console.error('❌ Erro ao adicionar:', error);
+          throw error;
+        }
 
+        console.log('✅ Adicionado com sucesso:', data);
         setFavorites([...favorites, audiobookId]);
         toast({
           title: "Adicionado aos favoritos",
@@ -99,10 +114,10 @@ export const useFavorites = () => {
         });
       }
     } catch (error: any) {
-      console.error('Error toggling favorite:', error);
+      console.error('❌ Erro ao alternar favorito:', error);
       toast({
         title: "Erro",
-        description: "Não foi possível atualizar os favoritos.",
+        description: error.message || "Não foi possível atualizar os favoritos.",
         variant: "destructive",
       });
     }

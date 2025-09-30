@@ -69,6 +69,7 @@ export const AudiobookCard = ({
             variant="secondary"
             onClick={(e) => {
               e.stopPropagation();
+              console.log('❤️ Botão de favorito clicado:', id);
               toggleFavorite(id);
             }}
           >
