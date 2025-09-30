@@ -1,48 +1,93 @@
-import { Search, User, Menu } from "lucide-react";
+import { Search, User, Menu, LogOut, Heart, List } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export const Header = () => {
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
+
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border">
       <div className="container mx-auto px-4 py-4 flex items-center justify-between">
         <div className="flex items-center gap-8">
-          <h1 className="text-2xl font-bold gradient-hero bg-clip-text text-transparent">
-            AudioStream
-          </h1>
+          <Link to="/" className="text-2xl font-bold gradient-hero bg-clip-text text-transparent">
+            ListenFlow
+          </Link>
           
           <nav className="hidden md:flex items-center gap-6">
-            <a href="/" className="text-sm hover:text-primary transition-colors">
+            <Link to="/" className="text-sm hover:text-primary transition-colors">
               Início
-            </a>
-            <a href="#" className="text-sm hover:text-primary transition-colors">
-              Novos
-            </a>
-            <a href="#" className="text-sm hover:text-primary transition-colors">
-              Categorias
-            </a>
-            <a href="#" className="text-sm hover:text-primary transition-colors">
-              Minha Lista
-            </a>
+            </Link>
+            {user && (
+              <>
+                <button className="text-sm hover:text-primary transition-colors">
+                  Categorias
+                </button>
+                <button className="text-sm hover:text-primary transition-colors">
+                  Minha Biblioteca
+                </button>
+              </>
+            )}
           </nav>
         </div>
 
         <div className="flex items-center gap-4">
-          <div className="hidden lg:flex items-center gap-2 bg-secondary rounded-full px-4 py-2">
-            <Search className="w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar audiobooks..."
-              className="border-0 bg-transparent focus-visible:ring-0 w-64"
-            />
-          </div>
+          {user && (
+            <>
+              <div className="hidden lg:flex items-center gap-2 bg-secondary rounded-full px-4 py-2">
+                <Search className="w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar audiobooks..."
+                  className="border-0 bg-transparent focus-visible:ring-0 w-64"
+                />
+              </div>
+              
+              <Button size="icon" variant="ghost" className="lg:hidden">
+                <Search className="w-5 h-5" />
+              </Button>
+            </>
+          )}
           
-          <Button size="icon" variant="ghost" className="lg:hidden">
-            <Search className="w-5 h-5" />
-          </Button>
-          
-          <Button size="icon" variant="ghost">
-            <User className="w-5 h-5" />
-          </Button>
+          {user ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="icon" variant="ghost">
+                  <User className="w-5 h-5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuItem>
+                  <Heart className="w-4 h-4 mr-2" />
+                  Favoritos
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                  <List className="w-4 h-4 mr-2" />
+                  Minhas Listas
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => signOut()}>
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Sair
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <Button
+              onClick={() => navigate('/auth')}
+              className="gradient-hero border-0 h-10"
+            >
+              Entrar
+            </Button>
+          )}
           
           <Button size="icon" variant="ghost" className="md:hidden">
             <Menu className="w-5 h-5" />
