@@ -1,7 +1,8 @@
-import { Play, Plus, Info } from "lucide-react";
+import { Play, Plus, Info, Heart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useFavorites } from "@/hooks/useFavorites";
 
 interface AudiobookCardProps {
   id: string;
@@ -22,6 +23,7 @@ export const AudiobookCard = ({
 }: AudiobookCardProps) => {
   const [isHovered, setIsHovered] = useState(false);
   const navigate = useNavigate();
+  const { toggleFavorite, isFavorite } = useFavorites();
 
   return (
     <div
@@ -67,9 +69,10 @@ export const AudiobookCard = ({
             variant="secondary"
             onClick={(e) => {
               e.stopPropagation();
+              toggleFavorite(id);
             }}
           >
-            <Plus className="w-5 h-5" />
+            <Heart className={`w-5 h-5 ${isFavorite(id) ? 'fill-primary text-primary' : ''}`} />
           </Button>
           
           <Button

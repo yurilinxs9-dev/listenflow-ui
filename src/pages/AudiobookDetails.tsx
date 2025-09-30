@@ -18,6 +18,8 @@ import { useState } from "react";
 import mysteryBook from "@/assets/book-mystery.jpg";
 import fantasyBook from "@/assets/book-fantasy.jpg";
 import scifiBook from "@/assets/book-scifi.jpg";
+import { useFavorites } from "@/hooks/useFavorites";
+import { ReviewSection } from "@/components/ReviewSection";
 
 const audiobookData: Record<string, any> = {
   "1": {
@@ -67,9 +69,10 @@ const AudiobookDetails = () => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState([25]);
   const [volume, setVolume] = useState([70]);
-  const [isFavorite, setIsFavorite] = useState(false);
+  const { toggleFavorite, isFavorite } = useFavorites();
 
   const audiobook = audiobookData[id || "1"] || audiobookData["1"];
+  const currentIsFavorite = isFavorite(id || "1");
 
   return (
     <div className="min-h-screen bg-background">
@@ -115,10 +118,10 @@ const AudiobookDetails = () => {
                   size="icon"
                   variant="secondary"
                   className="h-12 w-12"
-                  onClick={() => setIsFavorite(!isFavorite)}
+                  onClick={() => toggleFavorite(id || "1")}
                 >
                   <Heart
-                    className={`w-5 h-5 ${isFavorite ? "fill-primary" : ""}`}
+                    className={`w-5 h-5 ${currentIsFavorite ? "fill-primary text-primary" : ""}`}
                   />
                 </Button>
 
@@ -197,6 +200,9 @@ const AudiobookDetails = () => {
                   ))}
                 </div>
               </div>
+
+              {/* Review Section */}
+              <ReviewSection audiobookId={id || "1"} />
             </div>
           </div>
         </div>
