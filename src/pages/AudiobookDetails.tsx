@@ -69,10 +69,11 @@ const AudiobookDetails = () => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState([25]);
   const [volume, setVolume] = useState([70]);
-  const { toggleFavorite, isFavorite } = useFavorites();
+  const { toggleFavorite, isFavorite, isToggling } = useFavorites();
 
   const audiobook = audiobookData[id || "1"] || audiobookData["1"];
   const currentIsFavorite = isFavorite(id || "1");
+  const isProcessing = isToggling[id || "1"] || false;
 
   return (
     <div className="min-h-screen bg-background">
@@ -119,6 +120,7 @@ const AudiobookDetails = () => {
                   variant="secondary"
                   className="h-12 w-12"
                   onClick={() => toggleFavorite(id || "1")}
+                  disabled={isProcessing}
                 >
                   <Heart
                     className={`w-5 h-5 ${currentIsFavorite ? "fill-primary text-primary" : ""}`}

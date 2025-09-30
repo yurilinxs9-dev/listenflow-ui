@@ -7,6 +7,7 @@ export const useFavorites = () => {
   const { user } = useAuth();
   const [favorites, setFavorites] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isToggling, setIsToggling] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     let mounted = true;
@@ -58,6 +59,12 @@ export const useFavorites = () => {
   const toggleFavorite = async (audiobookId: string) => {
     console.log('🔄 toggleFavorite chamado:', { audiobookId, user: user?.id });
     
+    // Previne cliques múltiplos
+    if (isToggling[audiobookId]) {
+      console.log('⏳ Já processando este audiobook, aguarde...');
+      return;
+    }
+    
     if (!user) {
       console.log('❌ Usuário não está logado');
       toast({
@@ -70,6 +77,9 @@ export const useFavorites = () => {
 
     const isFavorite = favorites.includes(audiobookId);
     console.log('📋 Estado atual:', { isFavorite, favorites });
+
+    // Marca como processando
+    setIsToggling(prev => ({ ...prev, [audiobookId]: true }));
 
     try {
       if (isFavorite) {
@@ -86,13 +96,37 @@ export const useFavorites = () => {
         }
 
         console.log('✅ Removido com sucesso');
-        setFavorites(favorites.filter(id => id !== audiobookId));
+        setFavorites(prev => prev.filter(id => id !== audiobookId));
         toast({
           title: "Removido dos favoritos",
           description: "Audiobook removido da sua lista de favoritos.",
         });
       } else {
         console.log('➕ Adicionando aos favoritos...');
+        
+        // Verifica novamente antes de inserir para evitar duplicação
+        const { data: existing } = await supabase
+          .from('favorites')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('audiobook_id', audiobookId)
+          .maybeSingle();
+
+        if (existing) {
+          console.log('⚠️ Audiobook já está nos favoritos, atualizando estado local...');
+          setFavorites(prev => {
+            if (!prev.includes(audiobookId)) {
+              return [...prev, audiobookId];
+            }
+            return prev;
+          });
+          toast({
+            title: "Já está nos favoritos",
+            description: "Este audiobook já está na sua lista.",
+          });
+          return;
+        }
+
         const { data, error } = await supabase
           .from('favorites')
           .insert({
@@ -103,11 +137,28 @@ export const useFavorites = () => {
 
         if (error) {
           console.error('❌ Erro ao adicionar:', error);
+          
+          // Se for erro de duplicação, apenas atualiza o estado local
+          if (error.code === '23505') {
+            console.log('⚠️ Erro de duplicação, sincronizando estado...');
+            setFavorites(prev => {
+              if (!prev.includes(audiobookId)) {
+                return [...prev, audiobookId];
+              }
+              return prev;
+            });
+            toast({
+              title: "Já nos favoritos",
+              description: "Este audiobook já está na sua lista.",
+            });
+            return;
+          }
+          
           throw error;
         }
 
         console.log('✅ Adicionado com sucesso:', data);
-        setFavorites([...favorites, audiobookId]);
+        setFavorites(prev => [...prev, audiobookId]);
         toast({
           title: "Adicionado aos favoritos",
           description: "Audiobook adicionado à sua lista de favoritos.",
@@ -120,10 +171,15 @@ export const useFavorites = () => {
         description: error.message || "Não foi possível atualizar os favoritos.",
         variant: "destructive",
       });
+    } finally {
+      // Libera o lock após um pequeno delay
+      setTimeout(() => {
+        setIsToggling(prev => ({ ...prev, [audiobookId]: false }));
+      }, 500);
     }
   };
 
   const isFavorite = (audiobookId: string) => favorites.includes(audiobookId);
 
-  return { favorites, loading, toggleFavorite, isFavorite };
+  return { favorites, loading, toggleFavorite, isFavorite, isToggling };
 };

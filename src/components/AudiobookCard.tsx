@@ -23,7 +23,9 @@ export const AudiobookCard = ({
 }: AudiobookCardProps) => {
   const [isHovered, setIsHovered] = useState(false);
   const navigate = useNavigate();
-  const { toggleFavorite, isFavorite } = useFavorites();
+  const { toggleFavorite, isFavorite, isToggling } = useFavorites();
+
+  const isProcessing = isToggling[id] || false;
 
   return (
     <div
@@ -72,6 +74,7 @@ export const AudiobookCard = ({
               console.log('❤️ Botão de favorito clicado:', id);
               toggleFavorite(id);
             }}
+            disabled={isProcessing}
           >
             <Heart className={`w-5 h-5 ${isFavorite(id) ? 'fill-primary text-primary' : ''}`} />
           </Button>
