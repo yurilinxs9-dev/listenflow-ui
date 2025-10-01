@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { useState } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,6 +15,14 @@ import {
 export const Header = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+    }
+  };
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border">
@@ -43,15 +52,22 @@ export const Header = () => {
         <div className="flex items-center gap-4">
           {user && (
             <>
-              <div className="hidden lg:flex items-center gap-2 bg-secondary rounded-full px-4 py-2">
+              <form onSubmit={handleSearch} className="hidden lg:flex items-center gap-2 bg-secondary rounded-full px-4 py-2">
                 <Search className="w-4 h-4 text-muted-foreground" />
                 <Input
                   placeholder="Buscar audiobooks..."
                   className="border-0 bg-transparent focus-visible:ring-0 w-64"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
                 />
-              </div>
+              </form>
               
-              <Button size="icon" variant="ghost" className="lg:hidden">
+              <Button 
+                size="icon" 
+                variant="ghost" 
+                className="lg:hidden"
+                onClick={() => navigate('/search')}
+              >
                 <Search className="w-5 h-5" />
               </Button>
             </>

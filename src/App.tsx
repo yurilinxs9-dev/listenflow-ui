@@ -11,6 +11,7 @@ import Favorites from "./pages/Favorites";
 import NotFound from "./pages/NotFound";
 import MyLists from "./pages/MyLists";
 import ListDetails from "./pages/ListDetails";
+import Search from "./pages/Search";
 
 const queryClient = new QueryClient();
 
@@ -28,6 +29,7 @@ const App = () => (
             <Route path="/favorites" element={<Favorites />} />
             <Route path="/lists" element={<MyLists />} />
             <Route path="/lists/:listId" element={<ListDetails />} />
+            <Route path="/search" element={<Search />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

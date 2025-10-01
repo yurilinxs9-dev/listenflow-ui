@@ -81,6 +81,11 @@ All colors MUST be HSL.
   
   .glow-effect {
     box-shadow: 0 0 20px hsla(var(--glow), 0.3);
+    transition: box-shadow 0.3s ease;
+  }
+  
+  .glow-effect:hover {
+    box-shadow: 0 0 30px hsla(var(--glow), 0.5);
   }
   
   .text-glow {

@@ -29,12 +29,18 @@ export const AudiobookCard = ({
 
   return (
     <div
-      className="group relative min-w-[180px] cursor-pointer transition-all duration-300 ease-out hover:scale-105"
+      className="group relative min-w-[180px] cursor-pointer transition-all duration-300 ease-out hover:scale-105 hover:-translate-y-2"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       onClick={() => navigate(`/audiobook/${id}`)}
     >
-      <div className="relative aspect-[2/3] rounded-lg overflow-hidden card-shine bg-card">
+      <div className="relative aspect-[2/3] rounded-lg overflow-hidden card-shine bg-card shadow-lg hover:shadow-2xl transition-shadow duration-300"
+        style={{
+          boxShadow: isHovered 
+            ? '0 20px 40px -10px hsla(var(--glow), 0.4), 0 10px 20px -5px hsla(0, 0%, 0%, 0.3)' 
+            : '0 4px 6px -1px hsla(0, 0%, 0%, 0.2), 0 2px 4px -1px hsla(0, 0%, 0%, 0.1)'
+        }}
+      >
         <img
           src={cover}
           alt={title}
