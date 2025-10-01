@@ -1,4 +1,4 @@
-import { Search, User, Menu, LogOut, Heart, List } from "lucide-react";
+import { Search, User, Menu, LogOut, Heart, FolderOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Link, useNavigate } from "react-router-dom";
@@ -69,9 +69,9 @@ export const Header = () => {
                   <Heart className="w-4 h-4 mr-2" />
                   Favoritos
                 </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <List className="w-4 h-4 mr-2" />
-                  Minhas Listas
+                <DropdownMenuItem onClick={() => navigate('/lists')}>
+                  <FolderOpen className="w-4 h-4 mr-2" />
+                  Minhas Coleções
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => signOut()}>

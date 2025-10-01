@@ -14,6 +14,7 @@ import {
   Clock,
   Star,
   BookOpen,
+  FolderPlus,
 } from "lucide-react";
 import { useState } from "react";
 import mysteryBook from "@/assets/book-mystery.jpg";
@@ -23,6 +24,7 @@ import { useFavorites } from "@/hooks/useFavorites";
 import { ReviewSection } from "@/components/ReviewSection";
 import { PdfViewer } from "@/components/PdfViewer";
 import { useUserSubscription } from "@/hooks/useUserSubscription";
+import { AddToListDialog } from "@/components/AddToListDialog";
 
 const audiobookData: Record<string, any> = {
   "1": {
@@ -167,6 +169,15 @@ const AudiobookDetails = () => {
                 <Button size="icon" variant="secondary" className="h-12 w-12">
                   <Share2 className="w-5 h-5" />
                 </Button>
+
+                <AddToListDialog
+                  audiobookId={id || "1"}
+                  trigger={
+                    <Button size="icon" variant="secondary" className="h-12 w-12">
+                      <FolderPlus className="w-5 h-5" />
+                    </Button>
+                  }
+                />
               </div>
             </div>
 

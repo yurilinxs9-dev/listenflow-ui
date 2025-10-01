@@ -9,6 +9,8 @@ import AudiobookDetails from "./pages/AudiobookDetails";
 import Auth from "./pages/Auth";
 import Favorites from "./pages/Favorites";
 import NotFound from "./pages/NotFound";
+import MyLists from "./pages/MyLists";
+import ListDetails from "./pages/ListDetails";
 
 const queryClient = new QueryClient();
 
@@ -24,6 +26,8 @@ const App = () => (
             <Route path="/audiobook/:id" element={<AudiobookDetails />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/favorites" element={<Favorites />} />
+            <Route path="/lists" element={<MyLists />} />
+            <Route path="/lists/:listId" element={<ListDetails />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
