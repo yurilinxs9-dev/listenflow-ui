@@ -13,6 +13,7 @@ import {
   ChevronLeft,
   Clock,
   Star,
+  BookOpen,
 } from "lucide-react";
 import { useState } from "react";
 import mysteryBook from "@/assets/book-mystery.jpg";
@@ -20,6 +21,7 @@ import fantasyBook from "@/assets/book-fantasy.jpg";
 import scifiBook from "@/assets/book-scifi.jpg";
 import { useFavorites } from "@/hooks/useFavorites";
 import { ReviewSection } from "@/components/ReviewSection";
+import { PdfViewer } from "@/components/PdfViewer";
 
 const audiobookData: Record<string, any> = {
   "1": {
@@ -34,6 +36,7 @@ const audiobookData: Record<string, any> = {
     rating: 4.7,
     reviews: 2847,
     year: 2024,
+    pdfUrl: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
   },
   "2": {
     title: "Reinos Perdidos",
@@ -47,6 +50,7 @@ const audiobookData: Record<string, any> = {
     rating: 4.9,
     reviews: 4521,
     year: 2024,
+    pdfUrl: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
   },
   "3": {
     title: "Estrelas Distantes",
@@ -60,6 +64,7 @@ const audiobookData: Record<string, any> = {
     rating: 4.8,
     reviews: 3654,
     year: 2024,
+    pdfUrl: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
   },
 };
 
@@ -69,6 +74,7 @@ const AudiobookDetails = () => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState([25]);
   const [volume, setVolume] = useState([70]);
+  const [showPdfViewer, setShowPdfViewer] = useState(false);
   const { toggleFavorite, isFavorite, isToggling } = useFavorites();
 
   const audiobook = audiobookData[id || "1"] || audiobookData["1"];
@@ -76,8 +82,17 @@ const AudiobookDetails = () => {
   const isProcessing = isToggling[id || "1"] || false;
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
+    <>
+      {showPdfViewer && audiobook.pdfUrl && (
+        <PdfViewer
+          pdfUrl={audiobook.pdfUrl}
+          title={audiobook.title}
+          onClose={() => setShowPdfViewer(false)}
+        />
+      )}
+      
+      <div className="min-h-screen bg-background">
+        <Header />
 
       <main className="pt-20 pb-32">
         <div className="container mx-auto px-4 md:px-8">
@@ -114,6 +129,17 @@ const AudiobookDetails = () => {
                   )}
                   {isPlaying ? "Pausar" : "Ouvir Agora"}
                 </Button>
+
+                {audiobook.pdfUrl && (
+                  <Button
+                    className="flex-1 h-12"
+                    variant="secondary"
+                    onClick={() => setShowPdfViewer(true)}
+                  >
+                    <BookOpen className="w-5 h-5 mr-2" />
+                    Ler
+                  </Button>
+                )}
 
                 <Button
                   size="icon"
@@ -278,7 +304,8 @@ const AudiobookDetails = () => {
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 };
 
