@@ -4,52 +4,7 @@ import { useFavorites } from "@/hooks/useFavorites";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { useEffect } from "react";
-import mysteryBook from "@/assets/book-mystery.jpg";
-import fantasyBook from "@/assets/book-fantasy.jpg";
-import scifiBook from "@/assets/book-scifi.jpg";
-import romanceBook from "@/assets/book-romance.jpg";
-import businessBook from "@/assets/book-business.jpg";
-import biographyBook from "@/assets/book-biography.jpg";
-
-// Mock data - em produção viria do backend
-const allAudiobooks: Record<string, any> = {
-  "1": {
-    title: "O Mistério da Noite Escura",
-    author: "Ana Silva",
-    duration: "8h 45min",
-    cover: mysteryBook,
-  },
-  "2": {
-    title: "Reinos Perdidos",
-    author: "Carlos Mendes",
-    duration: "12h 30min",
-    cover: fantasyBook,
-  },
-  "3": {
-    title: "Estrelas Distantes",
-    author: "Maria Costa",
-    duration: "10h 15min",
-    cover: scifiBook,
-  },
-  "4": {
-    title: "Amor em Paris",
-    author: "Beatriz Santos",
-    duration: "6h 20min",
-    cover: romanceBook,
-  },
-  "5": {
-    title: "O Código do Sucesso",
-    author: "João Almeida",
-    duration: "7h 10min",
-    cover: businessBook,
-  },
-  "6": {
-    title: "Vida de um Gênio",
-    author: "Pedro Rocha",
-    duration: "9h 45min",
-    cover: biographyBook,
-  },
-};
+import { getAudiobookById } from "@/data/mockAudiobooks";
 
 const Favorites = () => {
   const { user } = useAuth();
@@ -63,8 +18,8 @@ const Favorites = () => {
   }, [user, loading, navigate]);
 
   const favoriteAudiobooks = favorites
-    .map(id => ({ id, ...allAudiobooks[id] }))
-    .filter(book => book.title);
+    .map(id => getAudiobookById(id))
+    .filter(book => book !== undefined);
 
   if (loading) {
     return (

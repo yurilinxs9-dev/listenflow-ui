@@ -17,65 +17,12 @@ import {
   FolderPlus,
 } from "lucide-react";
 import { useState } from "react";
-import mysteryBook from "@/assets/book-mystery.jpg";
-import fantasyBook from "@/assets/book-fantasy.jpg";
-import scifiBook from "@/assets/book-scifi.jpg";
 import { useFavorites } from "@/hooks/useFavorites";
 import { ReviewSection } from "@/components/ReviewSection";
 import { PdfViewer } from "@/components/PdfViewer";
 import { useUserSubscription } from "@/hooks/useUserSubscription";
 import { AddToListDialog } from "@/components/AddToListDialog";
-
-const audiobookData: Record<string, any> = {
-  "1": {
-    title: "O Mistério da Noite Escura",
-    author: "Ana Silva",
-    narrator: "João Pedro",
-    duration: "8h 45min",
-    cover: mysteryBook,
-    description:
-      "Um thriller psicológico envolvente que irá mantê-lo acordado até as primeiras horas da manhã. Quando uma série de eventos inexplicáveis começa a acontecer em uma pequena cidade, uma detetive determinada precisa desvendar os segredos mais sombrios para salvar vidas inocentes.",
-    genre: "Mistério & Thriller",
-    rating: 4.7,
-    reviews: 2847,
-    year: 2024,
-    pdfUrl: "https://pdfobject.com/pdf/sample.pdf",
-    isPremium: false,
-    previewPages: 10,
-  },
-  "2": {
-    title: "Reinos Perdidos",
-    author: "Carlos Mendes",
-    narrator: "Maria Silva",
-    duration: "12h 30min",
-    cover: fantasyBook,
-    description:
-      "Uma épica jornada fantástica através de terras místicas e batalhas lendárias. Aventure-se em um mundo onde a magia é real e os destinos de reinos inteiros dependem das escolhas de heróis improváveis.",
-    genre: "Fantasia Épica",
-    rating: 4.9,
-    reviews: 4521,
-    year: 2024,
-    pdfUrl: "https://pdfobject.com/pdf/sample.pdf",
-    isPremium: true,
-    previewPages: 15,
-  },
-  "3": {
-    title: "Estrelas Distantes",
-    author: "Maria Costa",
-    narrator: "Pedro Santos",
-    duration: "10h 15min",
-    cover: scifiBook,
-    description:
-      "Ficção científica de tirar o fôlego que explora os limites do universo conhecido. Uma expedição espacial descobre algo que mudará para sempre o entendimento da humanidade sobre seu lugar no cosmos.",
-    genre: "Ficção Científica",
-    rating: 4.8,
-    reviews: 3654,
-    year: 2024,
-    pdfUrl: "https://pdfobject.com/pdf/sample.pdf",
-    isPremium: true,
-    previewPages: 20,
-  },
-};
+import { getAudiobookById } from "@/data/mockAudiobooks";
 
 const AudiobookDetails = () => {
   const { id } = useParams();
@@ -87,7 +34,34 @@ const AudiobookDetails = () => {
   const { toggleFavorite, isFavorite, isToggling } = useFavorites();
   const { isPremium: userIsPremium } = useUserSubscription();
 
-  const audiobook = audiobookData[id || "1"] || audiobookData["1"];
+  const audiobookData = getAudiobookById(id || "1");
+  
+  if (!audiobookData) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <main className="pt-20 pb-20">
+          <div className="container mx-auto px-4 md:px-8">
+            <div className="text-center py-20">
+              <p className="text-muted-foreground text-lg">Audiobook não encontrado.</p>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  const audiobook = {
+    ...audiobookData,
+    narrator: audiobookData.narrator || "Narrador Profissional",
+    genre: audiobookData.category,
+    reviews: Math.floor(Math.random() * 5000) + 1000,
+    year: 2024,
+    pdfUrl: "https://pdfobject.com/pdf/sample.pdf",
+    isPremium: false,
+    previewPages: 10,
+  };
+
   const currentIsFavorite = isFavorite(id || "1");
   const isProcessing = isToggling[id || "1"] || false;
 
