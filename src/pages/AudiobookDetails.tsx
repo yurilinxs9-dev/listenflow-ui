@@ -22,6 +22,7 @@ import scifiBook from "@/assets/book-scifi.jpg";
 import { useFavorites } from "@/hooks/useFavorites";
 import { ReviewSection } from "@/components/ReviewSection";
 import { PdfViewer } from "@/components/PdfViewer";
+import { useUserSubscription } from "@/hooks/useUserSubscription";
 
 const audiobookData: Record<string, any> = {
   "1": {
@@ -36,7 +37,9 @@ const audiobookData: Record<string, any> = {
     rating: 4.7,
     reviews: 2847,
     year: 2024,
-    pdfUrl: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+    pdfUrl: "https://pdfobject.com/pdf/sample.pdf",
+    isPremium: false,
+    previewPages: 10,
   },
   "2": {
     title: "Reinos Perdidos",
@@ -50,7 +53,9 @@ const audiobookData: Record<string, any> = {
     rating: 4.9,
     reviews: 4521,
     year: 2024,
-    pdfUrl: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+    pdfUrl: "https://pdfobject.com/pdf/sample.pdf",
+    isPremium: true,
+    previewPages: 15,
   },
   "3": {
     title: "Estrelas Distantes",
@@ -64,7 +69,9 @@ const audiobookData: Record<string, any> = {
     rating: 4.8,
     reviews: 3654,
     year: 2024,
-    pdfUrl: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+    pdfUrl: "https://pdfobject.com/pdf/sample.pdf",
+    isPremium: true,
+    previewPages: 20,
   },
 };
 
@@ -76,6 +83,7 @@ const AudiobookDetails = () => {
   const [volume, setVolume] = useState([70]);
   const [showPdfViewer, setShowPdfViewer] = useState(false);
   const { toggleFavorite, isFavorite, isToggling } = useFavorites();
+  const { isPremium: userIsPremium } = useUserSubscription();
 
   const audiobook = audiobookData[id || "1"] || audiobookData["1"];
   const currentIsFavorite = isFavorite(id || "1");
@@ -88,6 +96,9 @@ const AudiobookDetails = () => {
           pdfUrl={audiobook.pdfUrl}
           title={audiobook.title}
           onClose={() => setShowPdfViewer(false)}
+          isPremium={audiobook.isPremium}
+          userIsPremium={userIsPremium}
+          previewPages={audiobook.previewPages}
         />
       )}
       

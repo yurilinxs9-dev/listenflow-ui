@@ -9,25 +9,6 @@ export const useFavorites = () => {
   const [loading, setLoading] = useState(true);
   const [isToggling, setIsToggling] = useState<Record<string, boolean>>({});
 
-  useEffect(() => {
-    let mounted = true;
-    
-    const loadFavorites = async () => {
-      if (user && mounted) {
-        await fetchFavorites();
-      } else if (!user && mounted) {
-        setFavorites([]);
-        setLoading(false);
-      }
-    };
-
-    loadFavorites();
-
-    return () => {
-      mounted = false;
-    };
-  }, [user?.id]); // Mudou para user?.id para evitar re-renders desnecessários
-
   const fetchFavorites = async () => {
     if (!user) return;
 
@@ -56,17 +37,39 @@ export const useFavorites = () => {
     }
   };
 
-  const toggleFavorite = async (audiobookId: string) => {
-    console.log('🔄 toggleFavorite chamado:', { audiobookId, user: user?.id });
+  useEffect(() => {
+    let mounted = true;
+    let timeoutId: NodeJS.Timeout;
     
+    const loadFavorites = async () => {
+      if (user?.id && mounted) {
+        // Adiciona um pequeno delay para evitar múltiplas chamadas
+        timeoutId = setTimeout(async () => {
+          if (mounted) {
+            await fetchFavorites();
+          }
+        }, 100);
+      } else if (!user && mounted) {
+        setFavorites([]);
+        setLoading(false);
+      }
+    };
+
+    loadFavorites();
+
+    return () => {
+      mounted = false;
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [user?.id]);
+
+  const toggleFavorite = async (audiobookId: string) => {
     // Previne cliques múltiplos
     if (isToggling[audiobookId]) {
-      console.log('⏳ Já processando este audiobook, aguarde...');
       return;
     }
     
     if (!user) {
-      console.log('❌ Usuário não está logado');
       toast({
         title: "Login necessário",
         description: "Faça login para adicionar favoritos.",
@@ -76,35 +79,27 @@ export const useFavorites = () => {
     }
 
     const isFavorite = favorites.includes(audiobookId);
-    console.log('📋 Estado atual:', { isFavorite, favorites });
 
     // Marca como processando
     setIsToggling(prev => ({ ...prev, [audiobookId]: true }));
 
     try {
       if (isFavorite) {
-        console.log('🗑️ Removendo dos favoritos...');
         const { error } = await supabase
           .from('favorites')
           .delete()
           .eq('user_id', user.id)
           .eq('audiobook_id', audiobookId);
 
-        if (error) {
-          console.error('❌ Erro ao remover:', error);
-          throw error;
-        }
+        if (error) throw error;
 
-        console.log('✅ Removido com sucesso');
         setFavorites(prev => prev.filter(id => id !== audiobookId));
         toast({
           title: "Removido dos favoritos",
           description: "Audiobook removido da sua lista de favoritos.",
         });
       } else {
-        console.log('➕ Adicionando aos favoritos...');
-        
-        // Verifica novamente antes de inserir para evitar duplicação
+        // Verifica antes de inserir
         const { data: existing } = await supabase
           .from('favorites')
           .select('id')
@@ -113,7 +108,6 @@ export const useFavorites = () => {
           .maybeSingle();
 
         if (existing) {
-          console.log('⚠️ Audiobook já está nos favoritos, atualizando estado local...');
           setFavorites(prev => {
             if (!prev.includes(audiobookId)) {
               return [...prev, audiobookId];
@@ -136,11 +130,7 @@ export const useFavorites = () => {
           .select();
 
         if (error) {
-          console.error('❌ Erro ao adicionar:', error);
-          
-          // Se for erro de duplicação, apenas atualiza o estado local
           if (error.code === '23505') {
-            console.log('⚠️ Erro de duplicação, sincronizando estado...');
             setFavorites(prev => {
               if (!prev.includes(audiobookId)) {
                 return [...prev, audiobookId];
@@ -153,11 +143,9 @@ export const useFavorites = () => {
             });
             return;
           }
-          
           throw error;
         }
 
-        console.log('✅ Adicionado com sucesso:', data);
         setFavorites(prev => [...prev, audiobookId]);
         toast({
           title: "Adicionado aos favoritos",
@@ -165,17 +153,15 @@ export const useFavorites = () => {
         });
       }
     } catch (error: any) {
-      console.error('❌ Erro ao alternar favorito:', error);
       toast({
         title: "Erro",
         description: error.message || "Não foi possível atualizar os favoritos.",
         variant: "destructive",
       });
     } finally {
-      // Libera o lock após um pequeno delay
       setTimeout(() => {
         setIsToggling(prev => ({ ...prev, [audiobookId]: false }));
-      }, 500);
+      }, 300);
     }
   };
 
