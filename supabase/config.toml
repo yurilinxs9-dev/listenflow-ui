@@ -1,1 +1,7 @@
 project_id = "vpehklrzzgklskapnfmk"
+
+[functions.process-audiobook-metadata]
+verify_jwt = false
+
+[functions.generate-audiobook-cover]
+verify_jwt = false

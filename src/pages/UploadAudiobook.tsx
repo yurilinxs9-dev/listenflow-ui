@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Upload, Loader2, X, FileAudio } from "lucide-react";
+import { Upload, Loader2, X, FileAudio, Sparkles } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -16,12 +16,14 @@ interface AudiobookForm {
   id: string;
   audioFile: File;
   coverFile: File | null;
+  coverBlob: string | null;
   title: string;
   author: string;
   narrator: string;
   description: string;
   genre: string;
   durationSeconds: number;
+  isProcessing: boolean;
 }
 
 export default function UploadAudiobook() {
@@ -31,20 +33,95 @@ export default function UploadAudiobook() {
   const [isUploading, setIsUploading] = useState(false);
   const [audiobooks, setAudiobooks] = useState<AudiobookForm[]>([]);
 
-  const handleAudioFilesSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const getAudioDuration = (file: File): Promise<number> => {
+    return new Promise((resolve) => {
+      const audio = new Audio();
+      audio.addEventListener('loadedmetadata', () => {
+        resolve(Math.round(audio.duration));
+      });
+      audio.addEventListener('error', () => {
+        resolve(0);
+      });
+      audio.src = URL.createObjectURL(file);
+    });
+  };
+
+  const processAudiobookMetadata = async (file: File, id: string) => {
+    try {
+      // Get duration
+      const duration = await getAudioDuration(file);
+      
+      // Get metadata from AI
+      const { data: metadataResult, error: metadataError } = await supabase.functions.invoke(
+        'process-audiobook-metadata',
+        { body: { filename: file.name } }
+      );
+
+      if (metadataError) throw metadataError;
+
+      // Generate cover
+      const { data: coverResult } = await supabase.functions.invoke(
+        'generate-audiobook-cover',
+        { 
+          body: { 
+            title: metadataResult.title,
+            author: metadataResult.author,
+            genre: metadataResult.genre
+          } 
+        }
+      );
+
+      return {
+        ...metadataResult,
+        durationSeconds: duration,
+        coverBlob: coverResult?.imageUrl || null,
+      };
+    } catch (error) {
+      console.error('Error processing metadata:', error);
+      return null;
+    }
+  };
+
+  const handleAudioFilesSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     const newAudiobooks = files.map(file => ({
       id: crypto.randomUUID(),
       audioFile: file,
       coverFile: null,
-      title: file.name.replace(/\.[^/.]+$/, ""), // Remove extensão
+      coverBlob: null,
+      title: file.name.replace(/\.[^/.]+$/, ""),
       author: "",
       narrator: "",
       description: "",
       genre: "",
       durationSeconds: 0,
+      isProcessing: true,
     }));
+    
     setAudiobooks([...audiobooks, ...newAudiobooks]);
+
+    // Process each audiobook in parallel
+    newAudiobooks.forEach(async (audiobook) => {
+      const metadata = await processAudiobookMetadata(audiobook.audioFile, audiobook.id);
+      
+      if (metadata) {
+        setAudiobooks(prev => prev.map(ab => 
+          ab.id === audiobook.id 
+            ? { 
+                ...ab, 
+                ...metadata,
+                isProcessing: false 
+              } 
+            : ab
+        ));
+      } else {
+        setAudiobooks(prev => prev.map(ab => 
+          ab.id === audiobook.id 
+            ? { ...ab, isProcessing: false } 
+            : ab
+        ));
+      }
+    });
   };
 
   const updateAudiobook = (id: string, field: keyof AudiobookForm, value: any) => {
@@ -125,6 +202,20 @@ export default function UploadAudiobook() {
               .getPublicUrl(coverPath);
             
             coverUrl = publicUrl;
+          } else if (audiobook.coverBlob) {
+            // Upload AI-generated cover
+            const coverBlob = await fetch(audiobook.coverBlob).then(r => r.blob());
+            const coverPath = `${user.id}/${Date.now()}_cover.png`;
+            const { error: coverError } = await supabase.storage
+              .from("audiobook-covers")
+              .upload(coverPath, coverBlob);
+
+            if (!coverError) {
+              const { data: { publicUrl } } = supabase.storage
+                .from("audiobook-covers")
+                .getPublicUrl(coverPath);
+              coverUrl = publicUrl;
+            }
           }
 
           // Create audiobook record
@@ -216,15 +307,35 @@ export default function UploadAudiobook() {
                         size="icon"
                         className="absolute top-4 right-4"
                         onClick={() => removeAudiobook(audiobook.id)}
-                        disabled={isUploading}
+                        disabled={isUploading || audiobook.isProcessing}
                       >
                         <X className="h-4 w-4" />
                       </Button>
 
                       <div className="flex items-center gap-3 mb-4">
-                        <FileAudio className="h-6 w-6 text-primary" />
-                        <h3 className="text-lg font-semibold">Audiobook {index + 1}</h3>
+                        {audiobook.isProcessing ? (
+                          <>
+                            <Sparkles className="h-6 w-6 text-primary animate-pulse" />
+                            <h3 className="text-lg font-semibold">Processando com IA... {index + 1}</h3>
+                          </>
+                        ) : (
+                          <>
+                            <FileAudio className="h-6 w-6 text-primary" />
+                            <h3 className="text-lg font-semibold">Audiobook {index + 1}</h3>
+                          </>
+                        )}
                       </div>
+
+                      {audiobook.coverBlob && (
+                        <div className="mb-4">
+                          <img 
+                            src={audiobook.coverBlob} 
+                            alt="Capa gerada"
+                            className="w-32 h-32 object-cover rounded"
+                          />
+                          <p className="text-xs text-muted-foreground mt-1">Capa gerada por IA</p>
+                        </div>
+                      )}
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
@@ -234,7 +345,7 @@ export default function UploadAudiobook() {
                             value={audiobook.title}
                             onChange={(e) => updateAudiobook(audiobook.id, 'title', e.target.value)}
                             required
-                            disabled={isUploading}
+                            disabled={isUploading || audiobook.isProcessing}
                           />
                         </div>
 
@@ -245,7 +356,7 @@ export default function UploadAudiobook() {
                             value={audiobook.author}
                             onChange={(e) => updateAudiobook(audiobook.id, 'author', e.target.value)}
                             required
-                            disabled={isUploading}
+                            disabled={isUploading || audiobook.isProcessing}
                           />
                         </div>
 
@@ -255,7 +366,7 @@ export default function UploadAudiobook() {
                             id={`narrator-${audiobook.id}`}
                             value={audiobook.narrator}
                             onChange={(e) => updateAudiobook(audiobook.id, 'narrator', e.target.value)}
-                            disabled={isUploading}
+                            disabled={isUploading || audiobook.isProcessing}
                           />
                         </div>
 
@@ -266,7 +377,7 @@ export default function UploadAudiobook() {
                             value={audiobook.genre}
                             onChange={(e) => updateAudiobook(audiobook.id, 'genre', e.target.value)}
                             placeholder="Ex: Ficção, Romance, Biografia"
-                            disabled={isUploading}
+                            disabled={isUploading || audiobook.isProcessing}
                           />
                         </div>
 
@@ -278,7 +389,8 @@ export default function UploadAudiobook() {
                             value={audiobook.durationSeconds}
                             onChange={(e) => updateAudiobook(audiobook.id, 'durationSeconds', Number(e.target.value))}
                             required
-                            disabled={isUploading}
+                            disabled={isUploading || audiobook.isProcessing}
+                            placeholder="Calculado automaticamente..."
                           />
                         </div>
 
@@ -289,7 +401,7 @@ export default function UploadAudiobook() {
                             type="file"
                             accept="image/*"
                             onChange={(e) => updateAudiobook(audiobook.id, 'coverFile', e.target.files?.[0] || null)}
-                            disabled={isUploading}
+                            disabled={isUploading || audiobook.isProcessing}
                           />
                           {audiobook.coverFile && (
                             <p className="text-sm text-muted-foreground mt-1">
@@ -305,7 +417,7 @@ export default function UploadAudiobook() {
                             value={audiobook.description}
                             onChange={(e) => updateAudiobook(audiobook.id, 'description', e.target.value)}
                             rows={3}
-                            disabled={isUploading}
+                            disabled={isUploading || audiobook.isProcessing}
                           />
                         </div>
 
