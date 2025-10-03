@@ -52,6 +52,54 @@ export type Database = {
           },
         ]
       }
+      audiobooks: {
+        Row: {
+          audio_url: string
+          author: string
+          cover_url: string | null
+          created_at: string
+          description: string | null
+          duration_seconds: number
+          file_size: number | null
+          genre: string | null
+          id: string
+          narrator: string | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          audio_url: string
+          author: string
+          cover_url?: string | null
+          created_at?: string
+          description?: string | null
+          duration_seconds?: number
+          file_size?: number | null
+          genre?: string | null
+          id?: string
+          narrator?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          audio_url?: string
+          author?: string
+          cover_url?: string | null
+          created_at?: string
+          description?: string | null
+          duration_seconds?: number
+          file_size?: number | null
+          genre?: string | null
+          id?: string
+          narrator?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       favorites: {
         Row: {
           audiobook_id: string

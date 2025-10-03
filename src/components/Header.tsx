@@ -1,4 +1,4 @@
-import { Search, User, Menu, LogOut, Heart, FolderOpen } from "lucide-react";
+import { Search, User, Menu, LogOut, Heart, FolderOpen, Upload, Music } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Link, useNavigate } from "react-router-dom";
@@ -81,6 +81,15 @@ export const Header = () => {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuItem onClick={() => navigate('/my-audiobooks')}>
+                  <Music className="w-4 h-4 mr-2" />
+                  Meus Audiobooks
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate('/upload')}>
+                  <Upload className="w-4 h-4 mr-2" />
+                  Enviar Audiobook
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => navigate('/favorites')}>
                   <Heart className="w-4 h-4 mr-2" />
                   Favoritos
