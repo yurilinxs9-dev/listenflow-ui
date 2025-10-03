@@ -7,24 +7,55 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Upload, Loader2 } from "lucide-react";
+import { Upload, Loader2, X, FileAudio } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { Card } from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
+
+interface AudiobookForm {
+  id: string;
+  audioFile: File;
+  coverFile: File | null;
+  title: string;
+  author: string;
+  narrator: string;
+  description: string;
+  genre: string;
+  durationSeconds: number;
+}
 
 export default function UploadAudiobook() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
   const [isUploading, setIsUploading] = useState(false);
-  const [formData, setFormData] = useState({
-    title: "",
-    author: "",
-    narrator: "",
-    description: "",
-    genre: "",
-    durationSeconds: 0,
-  });
-  const [audioFile, setAudioFile] = useState<File | null>(null);
-  const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [audiobooks, setAudiobooks] = useState<AudiobookForm[]>([]);
+
+  const handleAudioFilesSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    const newAudiobooks = files.map(file => ({
+      id: crypto.randomUUID(),
+      audioFile: file,
+      coverFile: null,
+      title: file.name.replace(/\.[^/.]+$/, ""), // Remove extensão
+      author: "",
+      narrator: "",
+      description: "",
+      genre: "",
+      durationSeconds: 0,
+    }));
+    setAudiobooks([...audiobooks, ...newAudiobooks]);
+  };
+
+  const updateAudiobook = (id: string, field: keyof AudiobookForm, value: any) => {
+    setAudiobooks(audiobooks.map(ab => 
+      ab.id === id ? { ...ab, [field]: value } : ab
+    ));
+  };
+
+  const removeAudiobook = (id: string) => {
+    setAudiobooks(audiobooks.filter(ab => ab.id !== id));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,10 +70,21 @@ export default function UploadAudiobook() {
       return;
     }
 
-    if (!audioFile) {
+    if (audiobooks.length === 0) {
       toast({
         title: "Erro",
-        description: "Selecione um arquivo de áudio",
+        description: "Selecione pelo menos um arquivo de áudio",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validar campos obrigatórios
+    const invalidAudiobooks = audiobooks.filter(ab => !ab.title || !ab.author || ab.durationSeconds === 0);
+    if (invalidAudiobooks.length > 0) {
+      toast({
+        title: "Erro",
+        description: "Preencha título, autor e duração para todos os audiobooks",
         variant: "destructive",
       });
       return;
@@ -51,62 +93,81 @@ export default function UploadAudiobook() {
     setIsUploading(true);
 
     try {
-      // Upload audio file
-      const audioPath = `${user.id}/${Date.now()}_${audioFile.name}`;
-      const { error: audioError } = await supabase.storage
-        .from("audiobooks")
-        .upload(audioPath, audioFile);
+      let successCount = 0;
+      let errorCount = 0;
 
-      if (audioError) throw audioError;
+      for (const audiobook of audiobooks) {
+        try {
+          // Upload audio file
+          const audioPath = `${user.id}/${Date.now()}_${audiobook.audioFile.name}`;
+          const { error: audioError } = await supabase.storage
+            .from("audiobooks")
+            .upload(audioPath, audiobook.audioFile);
 
-      const { data: { publicUrl: audioUrl } } = supabase.storage
-        .from("audiobooks")
-        .getPublicUrl(audioPath);
+          if (audioError) throw audioError;
 
-      // Upload cover file if provided
-      let coverUrl = "";
-      if (coverFile) {
-        const coverPath = `${user.id}/${Date.now()}_${coverFile.name}`;
-        const { error: coverError } = await supabase.storage
-          .from("audiobook-covers")
-          .upload(coverPath, coverFile);
+          const { data: { publicUrl: audioUrl } } = supabase.storage
+            .from("audiobooks")
+            .getPublicUrl(audioPath);
 
-        if (coverError) throw coverError;
+          // Upload cover file if provided
+          let coverUrl = "";
+          if (audiobook.coverFile) {
+            const coverPath = `${user.id}/${Date.now()}_${audiobook.coverFile.name}`;
+            const { error: coverError } = await supabase.storage
+              .from("audiobook-covers")
+              .upload(coverPath, audiobook.coverFile);
 
-        const { data: { publicUrl } } = supabase.storage
-          .from("audiobook-covers")
-          .getPublicUrl(coverPath);
-        
-        coverUrl = publicUrl;
+            if (coverError) throw coverError;
+
+            const { data: { publicUrl } } = supabase.storage
+              .from("audiobook-covers")
+              .getPublicUrl(coverPath);
+            
+            coverUrl = publicUrl;
+          }
+
+          // Create audiobook record
+          const { error: dbError } = await supabase.from("audiobooks").insert({
+            user_id: user.id,
+            title: audiobook.title,
+            author: audiobook.author,
+            narrator: audiobook.narrator || null,
+            description: audiobook.description || null,
+            genre: audiobook.genre || null,
+            duration_seconds: audiobook.durationSeconds,
+            audio_url: audioUrl,
+            cover_url: coverUrl || null,
+            file_size: audiobook.audioFile.size,
+          });
+
+          if (dbError) throw dbError;
+
+          successCount++;
+        } catch (error: any) {
+          console.error(`Erro ao enviar ${audiobook.title}:`, error);
+          errorCount++;
+        }
       }
 
-      // Create audiobook record
-      const { error: dbError } = await supabase.from("audiobooks").insert({
-        user_id: user.id,
-        title: formData.title,
-        author: formData.author,
-        narrator: formData.narrator || null,
-        description: formData.description || null,
-        genre: formData.genre || null,
-        duration_seconds: formData.durationSeconds,
-        audio_url: audioUrl,
-        cover_url: coverUrl || null,
-        file_size: audioFile.size,
-      });
-
-      if (dbError) throw dbError;
-
-      toast({
-        title: "Sucesso!",
-        description: "Audiobook enviado com sucesso",
-      });
-
-      navigate("/my-audiobooks");
+      if (successCount > 0) {
+        toast({
+          title: "Sucesso!",
+          description: `${successCount} audiobook(s) enviado(s) com sucesso${errorCount > 0 ? `, ${errorCount} falharam` : ''}`,
+        });
+        navigate("/my-audiobooks");
+      } else {
+        toast({
+          title: "Erro",
+          description: "Nenhum audiobook foi enviado com sucesso",
+          variant: "destructive",
+        });
+      }
     } catch (error: any) {
       console.error("Upload error:", error);
       toast({
         title: "Erro no upload",
-        description: error.message || "Ocorreu um erro ao enviar o audiobook",
+        description: error.message || "Ocorreu um erro ao enviar os audiobooks",
         variant: "destructive",
       });
     } finally {
@@ -117,133 +178,174 @@ export default function UploadAudiobook() {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <main className="container mx-auto px-4 py-8 max-w-2xl">
-        <h1 className="text-4xl font-bold mb-8">Enviar Audiobook</h1>
+      <main className="container mx-auto px-4 py-8 max-w-6xl">
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold mb-2">Upload em Massa</h1>
+          <p className="text-muted-foreground">
+            Selecione múltiplos arquivos de áudio e preencha os detalhes de cada um
+          </p>
+        </div>
         
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <Label htmlFor="title">Título *</Label>
+        <div className="space-y-6">
+          <Card className="p-6">
+            <Label htmlFor="audio-files" className="block mb-2">
+              Selecionar Arquivos de Áudio *
+            </Label>
             <Input
-              id="title"
-              value={formData.title}
-              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              required
-              disabled={isUploading}
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="author">Autor *</Label>
-            <Input
-              id="author"
-              value={formData.author}
-              onChange={(e) => setFormData({ ...formData, author: e.target.value })}
-              required
-              disabled={isUploading}
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="narrator">Narrador</Label>
-            <Input
-              id="narrator"
-              value={formData.narrator}
-              onChange={(e) => setFormData({ ...formData, narrator: e.target.value })}
-              disabled={isUploading}
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="genre">Gênero</Label>
-            <Input
-              id="genre"
-              value={formData.genre}
-              onChange={(e) => setFormData({ ...formData, genre: e.target.value })}
-              placeholder="Ex: Ficção, Romance, Biografia"
-              disabled={isUploading}
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="duration">Duração (em segundos) *</Label>
-            <Input
-              id="duration"
-              type="number"
-              value={formData.durationSeconds}
-              onChange={(e) => setFormData({ ...formData, durationSeconds: Number(e.target.value) })}
-              required
-              disabled={isUploading}
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="description">Descrição</Label>
-            <Textarea
-              id="description"
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              rows={4}
-              disabled={isUploading}
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="audio">Arquivo de Áudio *</Label>
-            <Input
-              id="audio"
+              id="audio-files"
               type="file"
               accept="audio/*"
-              onChange={(e) => setAudioFile(e.target.files?.[0] || null)}
-              required
+              multiple
+              onChange={handleAudioFilesSelect}
               disabled={isUploading}
             />
-            {audioFile && (
-              <p className="text-sm text-muted-foreground mt-1">
-                {audioFile.name} ({(audioFile.size / 1024 / 1024).toFixed(2)} MB)
-              </p>
-            )}
-          </div>
+            <p className="text-sm text-muted-foreground mt-2">
+              {audiobooks.length} arquivo(s) selecionado(s)
+            </p>
+          </Card>
 
-          <div>
-            <Label htmlFor="cover">Imagem de Capa</Label>
-            <Input
-              id="cover"
-              type="file"
-              accept="image/*"
-              onChange={(e) => setCoverFile(e.target.files?.[0] || null)}
-              disabled={isUploading}
-            />
-            {coverFile && (
-              <p className="text-sm text-muted-foreground mt-1">
-                {coverFile.name}
-              </p>
-            )}
-          </div>
+          {audiobooks.length > 0 && (
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <ScrollArea className="h-[600px] rounded-md border p-4">
+                <div className="space-y-6">
+                  {audiobooks.map((audiobook, index) => (
+                    <Card key={audiobook.id} className="p-6 relative">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="absolute top-4 right-4"
+                        onClick={() => removeAudiobook(audiobook.id)}
+                        disabled={isUploading}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
 
-          <div className="flex gap-4">
-            <Button type="submit" disabled={isUploading} className="flex-1">
-              {isUploading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Enviando...
-                </>
-              ) : (
-                <>
-                  <Upload className="mr-2 h-4 w-4" />
-                  Enviar Audiobook
-                </>
-              )}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => navigate("/")}
-              disabled={isUploading}
-            >
-              Cancelar
-            </Button>
-          </div>
-        </form>
+                      <div className="flex items-center gap-3 mb-4">
+                        <FileAudio className="h-6 w-6 text-primary" />
+                        <h3 className="text-lg font-semibold">Audiobook {index + 1}</h3>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor={`title-${audiobook.id}`}>Título *</Label>
+                          <Input
+                            id={`title-${audiobook.id}`}
+                            value={audiobook.title}
+                            onChange={(e) => updateAudiobook(audiobook.id, 'title', e.target.value)}
+                            required
+                            disabled={isUploading}
+                          />
+                        </div>
+
+                        <div>
+                          <Label htmlFor={`author-${audiobook.id}`}>Autor *</Label>
+                          <Input
+                            id={`author-${audiobook.id}`}
+                            value={audiobook.author}
+                            onChange={(e) => updateAudiobook(audiobook.id, 'author', e.target.value)}
+                            required
+                            disabled={isUploading}
+                          />
+                        </div>
+
+                        <div>
+                          <Label htmlFor={`narrator-${audiobook.id}`}>Narrador</Label>
+                          <Input
+                            id={`narrator-${audiobook.id}`}
+                            value={audiobook.narrator}
+                            onChange={(e) => updateAudiobook(audiobook.id, 'narrator', e.target.value)}
+                            disabled={isUploading}
+                          />
+                        </div>
+
+                        <div>
+                          <Label htmlFor={`genre-${audiobook.id}`}>Gênero</Label>
+                          <Input
+                            id={`genre-${audiobook.id}`}
+                            value={audiobook.genre}
+                            onChange={(e) => updateAudiobook(audiobook.id, 'genre', e.target.value)}
+                            placeholder="Ex: Ficção, Romance, Biografia"
+                            disabled={isUploading}
+                          />
+                        </div>
+
+                        <div>
+                          <Label htmlFor={`duration-${audiobook.id}`}>Duração (segundos) *</Label>
+                          <Input
+                            id={`duration-${audiobook.id}`}
+                            type="number"
+                            value={audiobook.durationSeconds}
+                            onChange={(e) => updateAudiobook(audiobook.id, 'durationSeconds', Number(e.target.value))}
+                            required
+                            disabled={isUploading}
+                          />
+                        </div>
+
+                        <div>
+                          <Label htmlFor={`cover-${audiobook.id}`}>Imagem de Capa</Label>
+                          <Input
+                            id={`cover-${audiobook.id}`}
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => updateAudiobook(audiobook.id, 'coverFile', e.target.files?.[0] || null)}
+                            disabled={isUploading}
+                          />
+                          {audiobook.coverFile && (
+                            <p className="text-sm text-muted-foreground mt-1">
+                              {audiobook.coverFile.name}
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="md:col-span-2">
+                          <Label htmlFor={`description-${audiobook.id}`}>Descrição</Label>
+                          <Textarea
+                            id={`description-${audiobook.id}`}
+                            value={audiobook.description}
+                            onChange={(e) => updateAudiobook(audiobook.id, 'description', e.target.value)}
+                            rows={3}
+                            disabled={isUploading}
+                          />
+                        </div>
+
+                        <div className="md:col-span-2">
+                          <p className="text-sm text-muted-foreground">
+                            Arquivo: {audiobook.audioFile.name} ({(audiobook.audioFile.size / 1024 / 1024).toFixed(2)} MB)
+                          </p>
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              </ScrollArea>
+
+              <div className="flex gap-4 sticky bottom-0 bg-background py-4 border-t">
+                <Button type="submit" disabled={isUploading} className="flex-1">
+                  {isUploading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Enviando {audiobooks.length} audiobook(s)...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="mr-2 h-4 w-4" />
+                      Enviar Todos ({audiobooks.length})
+                    </>
+                  )}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => navigate("/")}
+                  disabled={isUploading}
+                >
+                  Cancelar
+                </Button>
+              </div>
+            </form>
+          )}
+        </div>
       </main>
     </div>
   );
