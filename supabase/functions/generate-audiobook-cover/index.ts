@@ -11,58 +11,75 @@ serve(async (req) => {
   }
 
   try {
-    const { title, author, genre } = await req.json();
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    const { title, author } = await req.json();
     
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
+    // Search for the book cover using Google Custom Search API or similar
+    const searchQuery = encodeURIComponent(`${title} ${author} book cover`);
+    
+    // Using DuckDuckGo image search (no API key needed)
+    const searchUrl = `https://duckduckgo.com/?q=${searchQuery}&iax=images&ia=images`;
+    
+    // For now, we'll use a placeholder approach - searching via Google Images URL
+    // In production, you'd want to use a proper image search API
+    const imageSearchUrl = `https://www.google.com/search?q=${searchQuery}&tbm=isch`;
+    
+    // Since we can't directly scrape, we'll fetch book cover from Open Library API
+    const openLibrarySearch = await fetch(
+      `https://openlibrary.org/search.json?title=${encodeURIComponent(title)}&author=${encodeURIComponent(author)}&limit=1`
+    );
+    
+    if (openLibrarySearch.ok) {
+      const data = await openLibrarySearch.json();
+      
+      if (data.docs && data.docs.length > 0) {
+        const book = data.docs[0];
+        const coverId = book.cover_i;
+        
+        if (coverId) {
+          const coverUrl = `https://covers.openlibrary.org/b/id/${coverId}-L.jpg`;
+          
+          return new Response(
+            JSON.stringify({ imageUrl: coverUrl }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+      }
+    }
+    
+    // Fallback: Try Google Books API
+    const googleBooksSearch = await fetch(
+      `https://www.googleapis.com/books/v1/volumes?q=intitle:${encodeURIComponent(title)}+inauthor:${encodeURIComponent(author)}&maxResults=1`
+    );
+    
+    if (googleBooksSearch.ok) {
+      const data = await googleBooksSearch.json();
+      
+      if (data.items && data.items.length > 0) {
+        const book = data.items[0];
+        const thumbnail = book.volumeInfo?.imageLinks?.thumbnail || book.volumeInfo?.imageLinks?.smallThumbnail;
+        
+        if (thumbnail) {
+          // Get higher resolution by modifying the URL
+          const highResUrl = thumbnail.replace('zoom=1', 'zoom=2').replace('&edge=curl', '');
+          
+          return new Response(
+            JSON.stringify({ imageUrl: highResUrl }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+      }
     }
 
-    // Generate cover image using AI
-    const prompt = `Create a professional audiobook cover for "${title}" by ${author}. Genre: ${genre}. The cover should be elegant, modern, and visually appealing with the book title prominently displayed. High quality, professional book cover design.`;
-
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash-image-preview",
-        messages: [
-          {
-            role: "user",
-            content: prompt
-          }
-        ],
-        modalities: ["image", "text"]
-      }),
-    });
-
-    if (!aiResponse.ok) {
-      console.error("AI gateway error:", aiResponse.status);
-      return new Response(
-        JSON.stringify({ error: "Erro ao gerar capa" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
-      );
-    }
-
-    const aiData = await aiResponse.json();
-    const imageUrl = aiData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
-
-    if (!imageUrl) {
-      throw new Error("Nenhuma imagem gerada");
-    }
-
+    // If no cover found, return null
     return new Response(
-      JSON.stringify({ imageUrl }),
+      JSON.stringify({ imageUrl: null }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
     console.error("Error:", error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error", imageUrl: null }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
     );
   }
 });
