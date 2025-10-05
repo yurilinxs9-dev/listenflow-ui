@@ -134,6 +134,14 @@ export default function UploadAudiobook() {
     setAudiobooks(audiobooks.filter(ab => ab.id !== id));
   };
 
+  const sanitizeFilename = (filename: string): string => {
+    return filename
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-zA-Z0-9.-]/g, '_')
+      .replace(/_+/g, '_');
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -175,8 +183,10 @@ export default function UploadAudiobook() {
 
       for (const audiobook of audiobooks) {
         try {
-          // Upload audio file
-          const audioPath = `${user.id}/${Date.now()}_${audiobook.audioFile.name}`;
+          // Sanitize filename
+          const sanitizedAudioName = sanitizeFilename(audiobook.audioFile.name);
+          const audioPath = `${user.id}/${Date.now()}_${sanitizedAudioName}`;
+          
           const { error: audioError } = await supabase.storage
             .from("audiobooks")
             .upload(audioPath, audiobook.audioFile);
@@ -190,7 +200,8 @@ export default function UploadAudiobook() {
           // Upload cover file if provided
           let coverUrl = "";
           if (audiobook.coverFile) {
-            const coverPath = `${user.id}/${Date.now()}_${audiobook.coverFile.name}`;
+            const sanitizedCoverName = sanitizeFilename(audiobook.coverFile.name);
+            const coverPath = `${user.id}/${Date.now()}_${sanitizedCoverName}`;
             const { error: coverError } = await supabase.storage
               .from("audiobook-covers")
               .upload(coverPath, audiobook.coverFile);
