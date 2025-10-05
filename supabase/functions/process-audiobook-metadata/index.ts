@@ -48,9 +48,10 @@ Por favor, extraia:
 1. O título do livro
 2. O nome do autor (geralmente vem junto no nome do arquivo)
 3. Determine o gênero literário mais apropriado (escolha um entre: Ficção, Romance, Mistério, Ficção Científica, Fantasia, Biografia, Negócios, Autoajuda, História, Suspense)
+4. Crie uma descrição envolvente e atraente do livro em português (2-3 frases), baseada no título, autor e gênero
 
 Responda APENAS no seguinte formato JSON sem nenhum texto adicional:
-{"title": "título", "author": "autor", "genre": "gênero"}`
+{"title": "título", "author": "autor", "genre": "gênero", "description": "descrição do livro"}`
           }
         ],
       }),
@@ -77,7 +78,8 @@ Responda APENAS no seguinte formato JSON sem nenhum texto adicional:
       metadata = {
         title: filename.replace(/\.[^/.]+$/, ""),
         author: "Autor Desconhecido",
-        genre: "Ficção"
+        genre: "Ficção",
+        description: "Um audiobook fascinante que promete envolver o ouvinte do início ao fim."
       };
     }
 
@@ -87,6 +89,7 @@ Responda APENAS no seguinte formato JSON sem nenhum texto adicional:
         author: metadata.author,
         narrator: randomNarrator,
         genre: metadata.genre,
+        description: metadata.description,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
