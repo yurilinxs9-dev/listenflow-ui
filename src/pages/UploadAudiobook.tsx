@@ -24,6 +24,8 @@ interface AudiobookForm {
   genre: string;
   durationSeconds: number;
   isProcessing: boolean;
+  uploadProgress: number;
+  error: string | null;
 }
 
 export default function UploadAudiobook() {
@@ -96,6 +98,8 @@ export default function UploadAudiobook() {
       genre: "",
       durationSeconds: 0,
       isProcessing: true,
+      uploadProgress: 0,
+      error: null,
     }));
     
     setAudiobooks([...audiobooks, ...newAudiobooks]);
@@ -137,9 +141,19 @@ export default function UploadAudiobook() {
   const sanitizeFilename = (filename: string): string => {
     return filename
       .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/[^a-zA-Z0-9.-]/g, '_')
-      .replace(/_+/g, '_');
+      .replace(/[\u0300-\u036f]/g, '') // Remove acentos
+      .replace(/[^a-zA-Z0-9.-]/g, '_') // Remove caracteres especiais
+      .replace(/_+/g, '_') // Remove underscores duplicados
+      .replace(/^_+|_+$/g, ''); // Remove underscores no início/fim
+  };
+
+  const generateUniqueFilename = (originalName: string, userId: string): string => {
+    const sanitized = sanitizeFilename(originalName);
+    const timestamp = Date.now();
+    const randomSuffix = Math.random().toString(36).substring(2, 8);
+    const extension = sanitized.split('.').pop();
+    const nameWithoutExt = sanitized.replace(`.${extension}`, '');
+    return `${userId}/${timestamp}_${nameWithoutExt}_${randomSuffix}.${extension}`;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -183,71 +197,125 @@ export default function UploadAudiobook() {
 
       for (const audiobook of audiobooks) {
         try {
-          // Sanitize filename
-          const sanitizedAudioName = sanitizeFilename(audiobook.audioFile.name);
-          const audioPath = `${user.id}/${Date.now()}_${sanitizedAudioName}`;
+          console.log(`[Upload] Iniciando upload de: ${audiobook.title}`);
+          
+          // Atualizar progresso: iniciando
+          updateAudiobook(audiobook.id, 'uploadProgress', 10);
+          
+          // Gerar nome único para o arquivo
+          const audioPath = generateUniqueFilename(audiobook.audioFile.name, user.id);
+          console.log(`[Upload] Path do áudio: ${audioPath}`);
+          
+          // Atualizar progresso: fazendo upload do áudio
+          updateAudiobook(audiobook.id, 'uploadProgress', 20);
           
           const { error: audioError } = await supabase.storage
             .from("audiobooks")
             .upload(audioPath, audiobook.audioFile);
 
-          if (audioError) throw audioError;
+          if (audioError) {
+            console.error(`[Upload] Erro ao enviar áudio ${audiobook.title}:`, audioError);
+            throw audioError;
+          }
+          
+          console.log(`[Upload] Áudio enviado com sucesso: ${audiobook.title}`);
+
+          // Atualizar progresso: áudio enviado
+          updateAudiobook(audiobook.id, 'uploadProgress', 50);
 
           const { data: { publicUrl: audioUrl } } = supabase.storage
             .from("audiobooks")
             .getPublicUrl(audioPath);
 
+          console.log(`[Upload] URL do áudio: ${audioUrl}`);
+
           // Upload cover file if provided
           let coverUrl = "";
+          
+          updateAudiobook(audiobook.id, 'uploadProgress', 60);
+          
           if (audiobook.coverFile) {
-            const sanitizedCoverName = sanitizeFilename(audiobook.coverFile.name);
-            const coverPath = `${user.id}/${Date.now()}_${sanitizedCoverName}`;
+            console.log(`[Upload] Enviando capa customizada: ${audiobook.coverFile.name}`);
+            const coverPath = generateUniqueFilename(audiobook.coverFile.name, user.id);
             const { error: coverError } = await supabase.storage
               .from("audiobook-covers")
               .upload(coverPath, audiobook.coverFile);
 
-            if (coverError) throw coverError;
+            if (coverError) {
+              console.error(`[Upload] Erro ao enviar capa customizada:`, coverError);
+              throw coverError;
+            }
 
             const { data: { publicUrl } } = supabase.storage
               .from("audiobook-covers")
               .getPublicUrl(coverPath);
             
             coverUrl = publicUrl;
+            console.log(`[Upload] Capa customizada enviada: ${coverUrl}`);
           } else if (audiobook.coverBlob) {
-            // Upload AI-generated cover
-            const coverBlob = await fetch(audiobook.coverBlob).then(r => r.blob());
-            const coverPath = `${user.id}/${Date.now()}_cover.png`;
-            const { error: coverError } = await supabase.storage
-              .from("audiobook-covers")
-              .upload(coverPath, coverBlob);
-
-            if (!coverError) {
-              const { data: { publicUrl } } = supabase.storage
+            try {
+              console.log(`[Upload] Baixando e enviando capa gerada pela IA`);
+              
+              // Tentar baixar a capa da URL
+              const coverBlob = await fetch(audiobook.coverBlob).then(r => {
+                if (!r.ok) throw new Error(`Falha ao baixar capa: ${r.status}`);
+                return r.blob();
+              });
+              
+              const coverPath = generateUniqueFilename('cover.png', user.id);
+              const { error: coverError } = await supabase.storage
                 .from("audiobook-covers")
-                .getPublicUrl(coverPath);
-              coverUrl = publicUrl;
+                .upload(coverPath, coverBlob);
+
+              if (!coverError) {
+                const { data: { publicUrl } } = supabase.storage
+                  .from("audiobook-covers")
+                  .getPublicUrl(coverPath);
+                coverUrl = publicUrl;
+                console.log(`[Upload] Capa IA enviada: ${coverUrl}`);
+              } else {
+                console.warn(`[Upload] Erro ao enviar capa IA, continuando sem capa:`, coverError);
+              }
+            } catch (coverFetchError) {
+              console.warn(`[Upload] Falha ao baixar capa da IA, continuando sem capa:`, coverFetchError);
             }
           }
+          
+          updateAudiobook(audiobook.id, 'uploadProgress', 80);
 
+          // Validação final antes de inserir no banco
+          if (!audiobook.title || !audiobook.author || !audiobook.durationSeconds) {
+            throw new Error('Metadados incompletos: título, autor ou duração faltando');
+          }
+
+          console.log(`[Upload] Inserindo registro no banco de dados`);
+          
           // Create audiobook record
           const { error: dbError } = await supabase.from("audiobooks").insert({
             user_id: user.id,
-            title: audiobook.title,
-            author: audiobook.author,
-            narrator: audiobook.narrator || null,
-            description: audiobook.description || null,
-            genre: audiobook.genre || null,
+            title: audiobook.title.trim(),
+            author: audiobook.author.trim(),
+            narrator: audiobook.narrator?.trim() || null,
+            description: audiobook.description?.trim() || null,
+            genre: audiobook.genre?.trim() || null,
             duration_seconds: audiobook.durationSeconds,
             audio_url: audioUrl,
             cover_url: coverUrl || null,
             file_size: audiobook.audioFile.size,
           });
 
-          if (dbError) throw dbError;
+          if (dbError) {
+            console.error(`[Upload] Erro ao inserir no banco:`, dbError);
+            throw dbError;
+          }
 
+          console.log(`[Upload] ✅ Audiobook enviado com sucesso: ${audiobook.title}`);
+          updateAudiobook(audiobook.id, 'uploadProgress', 100);
           successCount++;
         } catch (error: any) {
-          console.error(`Erro ao enviar ${audiobook.title}:`, error);
+          console.error(`[Upload] ❌ Erro ao enviar ${audiobook.title}:`, error);
+          updateAudiobook(audiobook.id, 'error', error.message || 'Erro desconhecido');
+          updateAudiobook(audiobook.id, 'uploadProgress', 0);
           errorCount++;
         }
       }
@@ -345,6 +413,27 @@ export default function UploadAudiobook() {
                             className="w-32 h-32 object-cover rounded"
                           />
                           <p className="text-xs text-muted-foreground mt-1">Capa gerada por IA</p>
+                        </div>
+                      )}
+
+                      {audiobook.error && (
+                        <div className="mb-4 p-3 bg-destructive/10 border border-destructive rounded-md">
+                          <p className="text-sm text-destructive font-medium">Erro: {audiobook.error}</p>
+                        </div>
+                      )}
+
+                      {audiobook.uploadProgress > 0 && audiobook.uploadProgress < 100 && (
+                        <div className="mb-4">
+                          <div className="flex justify-between text-sm mb-1">
+                            <span>Enviando...</span>
+                            <span>{audiobook.uploadProgress}%</span>
+                          </div>
+                          <div className="w-full bg-secondary rounded-full h-2">
+                            <div 
+                              className="bg-primary h-2 rounded-full transition-all duration-300"
+                              style={{ width: `${audiobook.uploadProgress}%` }}
+                            />
+                          </div>
                         </div>
                       )}
 
