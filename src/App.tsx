@@ -14,7 +14,7 @@ import ListDetails from "./pages/ListDetails";
 import Search from "./pages/Search";
 import UploadAudiobook from "./pages/UploadAudiobook";
 import MyAudiobooks from "./pages/MyAudiobooks";
-import Admin from "./pages/Admin";
+import AdminDashboard from "./pages/AdminDashboard";
 import AdminAudiobooks from "./pages/AdminAudiobooks";
 import AdminUsers from "./pages/AdminUsers";
 
@@ -37,7 +37,7 @@ const App = () => (
             <Route path="/search" element={<Search />} />
             <Route path="/upload" element={<UploadAudiobook />} />
             <Route path="/my-audiobooks" element={<MyAudiobooks />} />
-            <Route path="/admin" element={<Admin />} />
+            <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/admin/audiobooks" element={<AdminAudiobooks />} />
             <Route path="/admin/users" element={<AdminUsers />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

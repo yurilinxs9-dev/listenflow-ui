@@ -5,8 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, Trash2, Music, Edit, Loader2, ArrowLeft } from "lucide-react";
+import { Plus, Trash2, Music, Edit, ArrowLeft } from "lucide-react";
 import { useAdmin } from "@/hooks/useAdmin";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,7 +18,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 interface Audiobook {
   id: string;
@@ -27,8 +29,8 @@ interface Audiobook {
   genre: string | null;
   cover_url: string | null;
   duration_seconds: number;
-  is_global: boolean;
-  user_id: string;
+  is_global: boolean | null;
+  require_login: boolean | null;
   created_at: string;
 }
 
@@ -43,12 +45,14 @@ export default function AdminAudiobooks() {
   useEffect(() => {
     if (!adminLoading && !isAdmin) {
       navigate("/");
-      return;
     }
+  }, [isAdmin, adminLoading, navigate]);
+
+  useEffect(() => {
     if (isAdmin) {
       loadAudiobooks();
     }
-  }, [isAdmin, adminLoading, navigate]);
+  }, [isAdmin]);
 
   const loadAudiobooks = async () => {
     try {
@@ -96,22 +100,22 @@ export default function AdminAudiobooks() {
     setDeleteId(null);
   };
 
-  const toggleGlobal = async (id: string, currentState: boolean) => {
+  const toggleGlobal = async (id: string, currentValue: boolean | null) => {
     try {
       const { error } = await supabase
         .from("audiobooks")
-        .update({ is_global: !currentState })
+        .update({ is_global: !currentValue })
         .eq("id", id);
 
       if (error) throw error;
 
-      setAudiobooks(audiobooks.map(book => 
-        book.id === id ? { ...book, is_global: !currentState } : book
+      setAudiobooks(audiobooks.map(ab => 
+        ab.id === id ? { ...ab, is_global: !currentValue } : ab
       ));
 
       toast({
-        title: "Sucesso",
-        description: `Audiobook ${!currentState ? 'publicado' : 'despublicado'} com sucesso`,
+        title: "Atualizado",
+        description: !currentValue ? "Audiobook agora é público" : "Audiobook agora é privado",
       });
     } catch (error: any) {
       console.error("Error updating audiobook:", error);
@@ -130,11 +134,7 @@ export default function AdminAudiobooks() {
   };
 
   if (adminLoading || !isAdmin) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    );
+    return null;
   }
 
   return (
@@ -143,12 +143,15 @@ export default function AdminAudiobooks() {
       <main className="container mx-auto px-4 py-8">
         <div className="flex items-center gap-4 mb-8">
           <Button variant="ghost" size="icon" onClick={() => navigate("/admin")}>
-            <ArrowLeft className="h-4 w-4" />
+            <ArrowLeft className="h-5 w-5" />
           </Button>
-          <div className="flex-1">
-            <h1 className="text-4xl font-bold">Gerenciar Audiobooks</h1>
-            <p className="text-muted-foreground">Todos os audiobooks da plataforma</p>
-          </div>
+          <h1 className="text-4xl font-bold">Gerenciar Audiobooks</h1>
+        </div>
+
+        <div className="flex justify-between items-center mb-6">
+          <p className="text-muted-foreground">
+            Total de audiobooks: {audiobooks.length}
+          </p>
           <Button onClick={() => navigate("/upload")}>
             <Plus className="mr-2 h-4 w-4" />
             Adicionar Audiobook
@@ -156,14 +159,22 @@ export default function AdminAudiobooks() {
         </div>
 
         {isLoading ? (
-          <div className="flex justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin" />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[1, 2, 3].map((i) => (
+              <Card key={i}>
+                <CardHeader>
+                  <Skeleton className="h-48 w-full rounded-md mb-4" />
+                  <Skeleton className="h-6 w-3/4" />
+                  <Skeleton className="h-4 w-1/2" />
+                </CardHeader>
+              </Card>
+            ))}
           </div>
         ) : audiobooks.length === 0 ? (
           <Card className="text-center py-12">
             <CardContent>
               <Music className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-              <CardTitle className="mb-2">Nenhum audiobook ainda</CardTitle>
+              <CardTitle className="mb-2">Nenhum audiobook cadastrado</CardTitle>
               <CardDescription className="mb-4">
                 Comece adicionando seu primeiro audiobook
               </CardDescription>
@@ -183,20 +194,12 @@ export default function AdminAudiobooks() {
                       src={book.cover_url}
                       alt={book.title}
                       className="w-full h-full object-cover"
-                      onError={(e) => {
-                        e.currentTarget.src = '/placeholder.svg';
-                      }}
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
                       <Music className="h-16 w-16 text-muted-foreground" />
                     </div>
                   )}
-                  <div className="absolute top-2 right-2">
-                    <Badge variant={book.is_global ? "default" : "secondary"}>
-                      {book.is_global ? "Público" : "Privado"}
-                    </Badge>
-                  </div>
                 </div>
                 <CardHeader>
                   <CardTitle className="line-clamp-2">{book.title}</CardTitle>
@@ -207,33 +210,35 @@ export default function AdminAudiobooks() {
                     <span className="block text-xs">{formatDuration(book.duration_seconds)}</span>
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-2">
-                  <Button
-                    variant={book.is_global ? "secondary" : "default"}
-                    size="sm"
-                    onClick={() => toggleGlobal(book.id, book.is_global)}
-                    className="w-full"
-                  >
-                    {book.is_global ? 'Despublicar' : 'Publicar'}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => navigate(`/audiobook/${book.id}`)}
-                    className="w-full"
-                  >
-                    <Edit className="mr-2 h-4 w-4" />
-                    Ver Detalhes
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={() => setDeleteId(book.id)}
-                    className="w-full"
-                  >
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Remover
-                  </Button>
+                <CardContent className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor={`global-${book.id}`}>Público</Label>
+                    <Switch
+                      id={`global-${book.id}`}
+                      checked={book.is_global ?? false}
+                      onCheckedChange={() => toggleGlobal(book.id, book.is_global)}
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => navigate(`/audiobook/${book.id}`)}
+                      className="flex-1"
+                    >
+                      <Edit className="mr-2 h-4 w-4" />
+                      Ver
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => setDeleteId(book.id)}
+                      className="flex-1"
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Remover
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             ))}
