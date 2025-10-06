@@ -181,13 +181,11 @@ export default function MyAudiobooks() {
                 </div>
                 <CardHeader>
                   <CardTitle className="line-clamp-2">{book.title}</CardTitle>
-                  <CardDescription>
-                    <div className="space-y-1">
-                      <p>Por {book.author}</p>
-                      {book.narrator && <p>Narrado por {book.narrator}</p>}
-                      {book.genre && <p className="text-xs">{book.genre}</p>}
-                      <p className="text-xs">{formatDuration(book.duration_seconds)}</p>
-                    </div>
+                  <CardDescription className="space-y-1">
+                    <span className="block">Por {book.author}</span>
+                    {book.narrator && <span className="block">Narrado por {book.narrator}</span>}
+                    {book.genre && <span className="block text-xs">{book.genre}</span>}
+                    <span className="block text-xs">{formatDuration(book.duration_seconds)}</span>
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-2">

@@ -186,8 +186,33 @@ serve(async (req) => {
       coverUrl = await generateCoverWithAI(title, author, genre || "Ficção");
     }
     
+    // Download the image and convert to base64 to avoid CORS issues
+    let imageBase64 = null;
+    if (coverUrl) {
+      try {
+        console.log("Downloading cover image...");
+        const imageResponse = await fetch(coverUrl);
+        if (imageResponse.ok) {
+          const imageBuffer = await imageResponse.arrayBuffer();
+          const imageBytes = new Uint8Array(imageBuffer);
+          
+          // Convert to base64
+          let binary = '';
+          for (let i = 0; i < imageBytes.byteLength; i++) {
+            binary += String.fromCharCode(imageBytes[i]);
+          }
+          imageBase64 = `data:image/jpeg;base64,${btoa(binary)}`;
+          console.log("Cover image downloaded and converted to base64");
+        } else {
+          console.error("Failed to download image:", imageResponse.status);
+        }
+      } catch (error) {
+        console.error("Error downloading image:", error);
+      }
+    }
+    
     return new Response(
-      JSON.stringify({ imageUrl: coverUrl }),
+      JSON.stringify({ imageUrl: imageBase64 || coverUrl }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
