@@ -15,6 +15,7 @@ import {
   Star,
   BookOpen,
   FolderPlus,
+  Sparkles,
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { useFavorites } from "@/hooks/useFavorites";
@@ -24,6 +25,8 @@ import { useUserSubscription } from "@/hooks/useUserSubscription";
 import { AddToListDialog } from "@/components/AddToListDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAudiobookAccess } from "@/hooks/useAudiobookAccess";
+import { useCoverGeneration } from "@/hooks/useCoverGeneration";
+import { useAuth } from "@/hooks/useAuth";
 
 const AudiobookDetails = () => {
   const { id } = useParams();
@@ -42,6 +45,8 @@ const AudiobookDetails = () => {
   const { toggleFavorite, isFavorite, isToggling } = useFavorites();
   const { isPremium: userIsPremium } = useUserSubscription();
   const { getPresignedUrl, isLoading: isGettingUrl } = useAudiobookAccess();
+  const { generateCover, isGenerating: isGeneratingCover } = useCoverGeneration();
+  const { user } = useAuth();
 
   useEffect(() => {
     const fetchAudiobook = async () => {
@@ -217,6 +222,22 @@ const AudiobookDetails = () => {
     }
   };
 
+  const handleGenerateCover = async () => {
+    if (!audiobook) return;
+    
+    const newCoverUrl = await generateCover(
+      audiobook.id,
+      audiobook.title,
+      audiobook.author,
+      audiobook.genre || 'Ficção'
+    );
+
+    if (newCoverUrl) {
+      // Update local state
+      setAudiobook({ ...audiobook, cover_url: newCoverUrl });
+    }
+  };
+
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
@@ -304,6 +325,18 @@ const AudiobookDetails = () => {
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
               </div>
+
+              {!audiobook.cover_url && user && audiobook.user_id === user.id && (
+                <Button
+                  onClick={handleGenerateCover}
+                  disabled={isGeneratingCover}
+                  variant="outline"
+                  className="w-full mb-3"
+                >
+                  <Sparkles className="w-4 h-4 mr-2" />
+                  {isGeneratingCover ? 'Gerando capa...' : 'Gerar Capa com IA'}
+                </Button>
+              )}
 
               <div className="flex gap-3">
                 <Button

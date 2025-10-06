@@ -5,9 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, Trash2, Music } from "lucide-react";
+import { Plus, Trash2, Music, Sparkles } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useCoverGeneration } from "@/hooks/useCoverGeneration";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -37,6 +38,8 @@ export default function MyAudiobooks() {
   const [audiobooks, setAudiobooks] = useState<Audiobook[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [generatingCoverId, setGeneratingCoverId] = useState<string | null>(null);
+  const { generateCover } = useCoverGeneration();
 
   useEffect(() => {
     if (!user) {
@@ -91,6 +94,28 @@ export default function MyAudiobooks() {
       });
     }
     setDeleteId(null);
+  };
+
+  const handleGenerateCover = async (audiobook: Audiobook) => {
+    setGeneratingCoverId(audiobook.id);
+    
+    const newCoverUrl = await generateCover(
+      audiobook.id,
+      audiobook.title,
+      audiobook.author,
+      audiobook.genre || 'Ficção'
+    );
+
+    if (newCoverUrl) {
+      // Update local state
+      setAudiobooks(audiobooks.map(ab => 
+        ab.id === audiobook.id 
+          ? { ...ab, cover_url: newCoverUrl } 
+          : ab
+      ));
+    }
+    
+    setGeneratingCoverId(null);
   };
 
   const formatDuration = (seconds: number) => {
@@ -165,7 +190,19 @@ export default function MyAudiobooks() {
                     </div>
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-2">
+                  {!book.cover_url && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleGenerateCover(book)}
+                      disabled={generatingCoverId === book.id}
+                      className="w-full"
+                    >
+                      <Sparkles className="mr-2 h-4 w-4" />
+                      {generatingCoverId === book.id ? 'Gerando...' : 'Gerar Capa com IA'}
+                    </Button>
+                  )}
                   <Button
                     variant="destructive"
                     size="sm"
