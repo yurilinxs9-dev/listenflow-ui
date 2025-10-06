@@ -1,8 +1,9 @@
-import { Search, User, Menu, LogOut, Heart, FolderOpen, Upload, Music } from "lucide-react";
+import { Search, User, Menu, LogOut, Heart, FolderOpen, Upload, Music, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { useAdmin } from "@/hooks/useAdmin";
 import { useState } from "react";
 import {
   DropdownMenu,
@@ -14,6 +15,7 @@ import {
 
 export const Header = () => {
   const { user, signOut } = useAuth();
+  const { isAdmin } = useAdmin();
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -81,6 +83,15 @@ export const Header = () => {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
+                {isAdmin && (
+                  <>
+                    <DropdownMenuItem onClick={() => navigate('/admin')}>
+                      <Shield className="w-4 h-4 mr-2" />
+                      Painel Admin
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                  </>
+                )}
                 <DropdownMenuItem onClick={() => navigate('/my-audiobooks')}>
                   <Music className="w-4 h-4 mr-2" />
                   Meus Audiobooks
