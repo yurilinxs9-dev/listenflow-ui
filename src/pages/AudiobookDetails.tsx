@@ -16,13 +16,14 @@ import {
   BookOpen,
   FolderPlus,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useFavorites } from "@/hooks/useFavorites";
 import { ReviewSection } from "@/components/ReviewSection";
 import { PdfViewer } from "@/components/PdfViewer";
 import { useUserSubscription } from "@/hooks/useUserSubscription";
 import { AddToListDialog } from "@/components/AddToListDialog";
-import { getAudiobookById } from "@/data/mockAudiobooks";
+import { supabase } from "@/integrations/supabase/client";
+import { useAudiobookAccess } from "@/hooks/useAudiobookAccess";
 
 const AudiobookDetails = () => {
   const { id } = useParams();
@@ -31,12 +32,73 @@ const AudiobookDetails = () => {
   const [progress, setProgress] = useState([25]);
   const [volume, setVolume] = useState([70]);
   const [showPdfViewer, setShowPdfViewer] = useState(false);
+  const [audiobook, setAudiobook] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const { toggleFavorite, isFavorite, isToggling } = useFavorites();
   const { isPremium: userIsPremium } = useUserSubscription();
+  const { getPresignedUrl, isLoading: isGettingUrl } = useAudiobookAccess();
 
-  const audiobookData = getAudiobookById(id || "1");
+  useEffect(() => {
+    const fetchAudiobook = async () => {
+      if (!id) return;
+      
+      try {
+        console.log(`[AudiobookDetails] Fetching audiobook: ${id}`);
+        const { data, error } = await supabase
+          .from('audiobooks')
+          .select('*')
+          .eq('id', id)
+          .single();
+
+        if (error) {
+          console.error('[AudiobookDetails] Error fetching audiobook:', error);
+          setAudiobook(null);
+        } else {
+          console.log('[AudiobookDetails] Audiobook loaded:', data);
+          setAudiobook(data);
+        }
+      } catch (error) {
+        console.error('[AudiobookDetails] Unexpected error:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAudiobook();
+  }, [id]);
+
+  const handlePlayPause = async () => {
+    if (!audiobook) return;
+
+    if (!audioUrl && !isPlaying) {
+      // Need to get presigned URL first
+      const url = await getPresignedUrl(audiobook.id);
+      if (url) {
+        setAudioUrl(url);
+        setIsPlaying(true);
+      }
+    } else {
+      setIsPlaying(!isPlaying);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <main className="pt-20 pb-20">
+          <div className="container mx-auto px-4 md:px-8">
+            <div className="text-center py-20">
+              <p className="text-muted-foreground text-lg">Carregando...</p>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
   
-  if (!audiobookData) {
+  if (!audiobook) {
     return (
       <div className="min-h-screen bg-background">
         <Header />
@@ -51,15 +113,11 @@ const AudiobookDetails = () => {
     );
   }
 
-  const audiobook = {
-    ...audiobookData,
-    narrator: audiobookData.narrator || "Narrador Profissional",
-    genre: audiobookData.category,
-    reviews: Math.floor(Math.random() * 5000) + 1000,
-    year: 2024,
-    pdfUrl: "https://pdfobject.com/pdf/sample.pdf",
-    isPremium: false,
-    previewPages: 10,
+  // Format duration
+  const formatDuration = (seconds: number): string => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    return `${hours}h ${minutes}min`;
   };
 
   const currentIsFavorite = isFavorite(id || "1");
@@ -67,14 +125,14 @@ const AudiobookDetails = () => {
 
   return (
     <>
-      {showPdfViewer && audiobook.pdfUrl && (
+      {showPdfViewer && (
         <PdfViewer
-          pdfUrl={audiobook.pdfUrl}
+          pdfUrl="https://pdfobject.com/pdf/sample.pdf"
           title={audiobook.title}
           onClose={() => setShowPdfViewer(false)}
-          isPremium={audiobook.isPremium}
+          isPremium={false}
           userIsPremium={userIsPremium}
-          previewPages={audiobook.previewPages}
+          previewPages={10}
         />
       )}
       
@@ -97,7 +155,7 @@ const AudiobookDetails = () => {
             <div className="space-y-6 animate-scale-in">
               <div className="relative aspect-[2/3] rounded-2xl overflow-hidden shadow-2xl">
                 <img
-                  src={audiobook.cover}
+                  src={audiobook.cover_url || "/placeholder.svg"}
                   alt={audiobook.title}
                   className="w-full h-full object-cover"
                 />
@@ -107,26 +165,23 @@ const AudiobookDetails = () => {
               <div className="flex gap-3">
                 <Button
                   className="flex-1 gradient-hero border-0 glow-effect h-12"
-                  onClick={() => setIsPlaying(!isPlaying)}
+                  onClick={handlePlayPause}
+                  disabled={isGettingUrl}
                 >
-                  {isPlaying ? (
-                    <Pause className="w-5 h-5 mr-2" />
+                  {isGettingUrl ? (
+                    <>Carregando...</>
+                  ) : isPlaying ? (
+                    <>
+                      <Pause className="w-5 h-5 mr-2" />
+                      Pausar
+                    </>
                   ) : (
-                    <Play className="w-5 h-5 mr-2" fill="currentColor" />
+                    <>
+                      <Play className="w-5 h-5 mr-2" fill="currentColor" />
+                      Ouvir Agora
+                    </>
                   )}
-                  {isPlaying ? "Pausar" : "Ouvir Agora"}
                 </Button>
-
-                {audiobook.pdfUrl && (
-                  <Button
-                    className="flex-1 h-12"
-                    variant="secondary"
-                    onClick={() => setShowPdfViewer(true)}
-                  >
-                    <BookOpen className="w-5 h-5 mr-2" />
-                    Ler
-                  </Button>
-                )}
 
                 <Button
                   size="icon"
@@ -168,26 +223,30 @@ const AudiobookDetails = () => {
                 <div className="flex flex-wrap gap-4 text-sm">
                   <div className="flex items-center gap-2">
                     <Star className="w-4 h-4 text-accent fill-accent" />
-                    <span className="font-semibold">{audiobook.rating}</span>
+                    <span className="font-semibold">4.5</span>
                     <span className="text-muted-foreground">
-                      ({audiobook.reviews.toLocaleString()} avaliações)
+                      (avaliações em breve)
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Clock className="w-4 h-4 text-muted-foreground" />
-                    <span>{audiobook.duration}</span>
+                    <span>{formatDuration(audiobook.duration_seconds || 0)}</span>
                   </div>
-                  <span className="px-3 py-1 bg-secondary rounded-full">
-                    {audiobook.genre}
+                  {audiobook.genre && (
+                    <span className="px-3 py-1 bg-secondary rounded-full">
+                      {audiobook.genre}
+                    </span>
+                  )}
+                  <span className="text-muted-foreground">
+                    {new Date(audiobook.created_at).getFullYear()}
                   </span>
-                  <span className="text-muted-foreground">{audiobook.year}</span>
                 </div>
               </div>
 
               <div>
                 <h2 className="text-xl font-semibold mb-3">Sobre este audiobook</h2>
                 <p className="text-foreground/80 leading-relaxed">
-                  {audiobook.description}
+                  {audiobook.description || "Audiobook disponível para reprodução."}
                 </p>
               </div>
 
@@ -196,10 +255,12 @@ const AudiobookDetails = () => {
                   <p className="text-sm text-muted-foreground mb-1">Autor</p>
                   <p className="font-semibold">{audiobook.author}</p>
                 </div>
-                <div>
-                  <p className="text-sm text-muted-foreground mb-1">Narrador</p>
-                  <p className="font-semibold">{audiobook.narrator}</p>
-                </div>
+                {audiobook.narrator && (
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">Narrador</p>
+                    <p className="font-semibold">{audiobook.narrator}</p>
+                  </div>
+                )}
               </div>
 
               <div className="bg-card p-6 rounded-xl border border-border">
