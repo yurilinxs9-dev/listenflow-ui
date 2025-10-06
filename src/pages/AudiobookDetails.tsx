@@ -237,9 +237,11 @@ const AudiobookDetails = () => {
                       {audiobook.genre}
                     </span>
                   )}
-                  <span className="text-muted-foreground">
-                    {new Date(audiobook.created_at).getFullYear()}
-                  </span>
+                  {audiobook.created_at && (
+                    <span className="text-muted-foreground">
+                      {new Date(audiobook.created_at).getFullYear()}
+                    </span>
+                  )}
                 </div>
               </div>
 
