@@ -63,7 +63,10 @@ export type Database = {
           file_size: number | null
           genre: string | null
           id: string
+          is_global: boolean | null
+          min_subscription_level: string | null
           narrator: string | null
+          require_login: boolean | null
           title: string
           updated_at: string
           user_id: string
@@ -78,7 +81,10 @@ export type Database = {
           file_size?: number | null
           genre?: string | null
           id?: string
+          is_global?: boolean | null
+          min_subscription_level?: string | null
           narrator?: string | null
+          require_login?: boolean | null
           title: string
           updated_at?: string
           user_id: string
@@ -93,7 +99,10 @@ export type Database = {
           file_size?: number | null
           genre?: string | null
           id?: string
+          is_global?: boolean | null
+          min_subscription_level?: string | null
           narrator?: string | null
+          require_login?: boolean | null
           title?: string
           updated_at?: string
           user_id?: string

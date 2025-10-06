@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.generate-audiobook-cover]
 verify_jwt = false
+
+[functions.get-audiobook-presigned-url]
+verify_jwt = true
