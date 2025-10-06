@@ -1,22 +1,53 @@
 import { Header } from "@/components/Header";
 import { HeroCarousel } from "@/components/HeroCarousel";
 import { CategoryRow } from "@/components/CategoryRow";
-import { 
-  mockAudiobooks, 
-  getAudiobooksByCategory, 
-  getRandomAudiobooks 
-} from "@/data/mockAudiobooks";
+import { supabase } from "@/integrations/supabase/client";
+import { useEffect, useState } from "react";
 
 const Index = () => {
-  // Buscar audiobooks por categoria
-  const desenvolvimentoPessoal = getAudiobooksByCategory("Desenvolvimento Pessoal").slice(0, 6);
-  const financasPessoais = getAudiobooksByCategory("Finanças Pessoais").slice(0, 6);
-  const empreendedorismo = getAudiobooksByCategory("Empreendedorismo").slice(0, 6);
-  const psicologia = getAudiobooksByCategory("Psicologia").slice(0, 6);
-  const motivacao = getAudiobooksByCategory("Motivação").slice(0, 6);
-  
-  // Audiobooks aleatórios para "Recomendações"
-  const recommendations = getRandomAudiobooks(6);
+  const [realAudiobooks, setRealAudiobooks] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchAudiobooks = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('audiobooks')
+          .select('*')
+          .not('audio_url', 'is', null)
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          console.error('[Index] Error fetching audiobooks:', error);
+        } else if (data) {
+          // Transform database audiobooks to match the expected format
+          const transformed = data.map((book: any) => ({
+            id: book.id,
+            title: book.title,
+            author: book.author,
+            duration: formatDuration(book.duration_seconds),
+            cover: book.cover_url || "/placeholder.svg",
+            rating: 4.5,
+            category: book.genre || "Geral",
+            description: book.description || "Audiobook disponível para reprodução."
+          }));
+          setRealAudiobooks(transformed);
+        }
+      } catch (error) {
+        console.error('[Index] Unexpected error:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAudiobooks();
+  }, []);
+
+  const formatDuration = (seconds: number): string => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    return `${hours}h ${minutes}min`;
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -26,12 +57,21 @@ const Index = () => {
         <HeroCarousel />
         
         <div className="space-y-8 pb-20">
-          <CategoryRow title="Recomendações para Você" audiobooks={recommendations} />
-          <CategoryRow title="Desenvolvimento Pessoal" audiobooks={desenvolvimentoPessoal} />
-          <CategoryRow title="Finanças Pessoais" audiobooks={financasPessoais} />
-          <CategoryRow title="Empreendedorismo" audiobooks={empreendedorismo} />
-          <CategoryRow title="Psicologia" audiobooks={psicologia} />
-          <CategoryRow title="Motivação e Autodescoberta" audiobooks={motivacao} />
+          {loading ? (
+            <div className="container mx-auto px-4 md:px-8 py-20 text-center">
+              <p className="text-muted-foreground">Carregando audiobooks...</p>
+            </div>
+          ) : realAudiobooks.length > 0 ? (
+            <>
+              <CategoryRow title="Meus Audiobooks Disponíveis" audiobooks={realAudiobooks} />
+              <CategoryRow title="Todos os Audiobooks" audiobooks={realAudiobooks} />
+            </>
+          ) : (
+            <div className="container mx-auto px-4 md:px-8 py-20 text-center">
+              <p className="text-muted-foreground">Nenhum audiobook disponível ainda.</p>
+              <p className="text-sm text-muted-foreground mt-2">Faça upload de audiobooks para começar!</p>
+            </div>
+          )}
         </div>
       </main>
     </div>
