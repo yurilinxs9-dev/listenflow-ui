@@ -109,6 +109,44 @@ export type Database = {
         }
         Relationships: []
       }
+      chapters: {
+        Row: {
+          audiobook_id: string
+          chapter_number: number
+          created_at: string
+          duration: number
+          id: string
+          start_time: number
+          title: string
+        }
+        Insert: {
+          audiobook_id: string
+          chapter_number: number
+          created_at?: string
+          duration?: number
+          id?: string
+          start_time?: number
+          title: string
+        }
+        Update: {
+          audiobook_id?: string
+          chapter_number?: number
+          created_at?: string
+          duration?: number
+          id?: string
+          start_time?: number
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_audiobook"
+            columns: ["audiobook_id"]
+            isOneToOne: false
+            referencedRelation: "audiobooks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       favorites: {
         Row: {
           audiobook_id: string

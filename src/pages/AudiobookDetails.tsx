@@ -38,6 +38,7 @@ const AudiobookDetails = () => {
   const [audiobook, setAudiobook] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [chapters, setChapters] = useState<any[]>([]);
   const { toggleFavorite, isFavorite, isToggling } = useFavorites();
   const { isPremium: userIsPremium } = useUserSubscription();
   const { getPresignedUrl, isLoading: isGettingUrl } = useAudiobookAccess();
@@ -69,6 +70,34 @@ const AudiobookDetails = () => {
     };
 
     fetchAudiobook();
+  }, [id]);
+
+  // Fetch chapters
+  useEffect(() => {
+    const fetchChapters = async () => {
+      if (!id) return;
+      
+      try {
+        console.log(`[AudiobookDetails] Fetching chapters for audiobook: ${id}`);
+        const { data, error } = await supabase
+          .from('chapters')
+          .select('*')
+          .eq('audiobook_id', id)
+          .order('chapter_number', { ascending: true });
+
+        if (error) {
+          console.error('[AudiobookDetails] Error fetching chapters:', error);
+          setChapters([]);
+        } else {
+          console.log('[AudiobookDetails] Chapters loaded:', data);
+          setChapters(data || []);
+        }
+      } catch (error) {
+        console.error('[AudiobookDetails] Unexpected error fetching chapters:', error);
+      }
+    };
+
+    fetchChapters();
   }, [id]);
 
   // Audio element event handlers
@@ -162,6 +191,32 @@ const AudiobookDetails = () => {
     }
   };
 
+  const handleChapterClick = async (startTime: number) => {
+    if (!audioRef.current) {
+      // Need to load audio first
+      if (!audioUrl && audiobook) {
+        const url = await getPresignedUrl(audiobook.id);
+        if (url) {
+          setAudioUrl(url);
+          // Wait for audio to load before seeking
+          setTimeout(() => {
+            if (audioRef.current) {
+              audioRef.current.currentTime = startTime;
+              audioRef.current.play();
+              setIsPlaying(true);
+            }
+          }, 500);
+        }
+      }
+    } else {
+      audioRef.current.currentTime = startTime;
+      if (!isPlaying) {
+        audioRef.current.play();
+        setIsPlaying(true);
+      }
+    }
+  };
+
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
@@ -243,6 +298,9 @@ const AudiobookDetails = () => {
                   src={audiobook.cover_url || "/placeholder.svg"}
                   alt={audiobook.title}
                   className="w-full h-full object-cover"
+                  onError={(e) => {
+                    e.currentTarget.src = "/placeholder.svg";
+                  }}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
               </div>
@@ -350,28 +408,31 @@ const AudiobookDetails = () => {
                 )}
               </div>
 
-              <div className="bg-card p-6 rounded-xl border border-border">
-                <h3 className="font-semibold mb-4">Capítulos</h3>
-                <div className="space-y-3">
-                  {[
-                    "1. Prólogo: A Noite Começa",
-                    "2. O Primeiro Sinal",
-                    "3. Investigação Inicial",
-                    "4. Pistas Ocultas",
-                    "5. O Confronto",
-                  ].map((chapter, index) => (
-                    <button
-                      key={index}
-                      className="w-full text-left p-3 rounded-lg hover:bg-secondary transition-colors flex items-center justify-between group"
-                    >
-                      <span className="group-hover:text-primary transition-colors">
-                        {chapter}
-                      </span>
-                      <Play className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
-                    </button>
-                  ))}
+              {chapters.length > 0 && (
+                <div className="bg-card p-6 rounded-xl border border-border">
+                  <h3 className="font-semibold mb-4">Capítulos</h3>
+                  <div className="space-y-3">
+                    {chapters.map((chapter) => (
+                      <button
+                        key={chapter.id}
+                        onClick={() => handleChapterClick(chapter.start_time)}
+                        className="w-full text-left p-3 rounded-lg hover:bg-secondary transition-colors flex items-center justify-between group"
+                        disabled={isGettingUrl}
+                      >
+                        <span className="group-hover:text-primary transition-colors">
+                          {chapter.chapter_number}. {chapter.title}
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-muted-foreground">
+                            {formatTime(chapter.start_time)}
+                          </span>
+                          <Play className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </div>
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Review Section */}
               <ReviewSection audiobookId={id || "1"} />
@@ -412,6 +473,9 @@ const AudiobookDetails = () => {
                   src={audiobook.cover_url || "/placeholder.svg"}
                   alt={audiobook.title}
                   className="w-12 h-12 rounded object-cover"
+                  onError={(e) => {
+                    e.currentTarget.src = "/placeholder.svg";
+                  }}
                 />
                 <div className="hidden md:block">
                   <p className="font-semibold text-sm">{audiobook.title}</p>
