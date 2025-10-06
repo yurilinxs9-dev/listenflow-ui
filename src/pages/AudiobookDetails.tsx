@@ -16,7 +16,7 @@ import {
   BookOpen,
   FolderPlus,
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useFavorites } from "@/hooks/useFavorites";
 import { ReviewSection } from "@/components/ReviewSection";
 import { PdfViewer } from "@/components/PdfViewer";
@@ -28,9 +28,12 @@ import { useAudiobookAccess } from "@/hooks/useAudiobookAccess";
 const AudiobookDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const audioRef = useRef<HTMLAudioElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [progress, setProgress] = useState([25]);
+  const [progress, setProgress] = useState([0]);
   const [volume, setVolume] = useState([70]);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
   const [showPdfViewer, setShowPdfViewer] = useState(false);
   const [audiobook, setAudiobook] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -68,19 +71,101 @@ const AudiobookDetails = () => {
     fetchAudiobook();
   }, [id]);
 
+  // Audio element event handlers
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const handleTimeUpdate = () => {
+      setCurrentTime(audio.currentTime);
+      const progressPercent = (audio.currentTime / audio.duration) * 100;
+      setProgress([progressPercent]);
+    };
+
+    const handleLoadedMetadata = () => {
+      setDuration(audio.duration);
+    };
+
+    const handleEnded = () => {
+      setIsPlaying(false);
+    };
+
+    audio.addEventListener('timeupdate', handleTimeUpdate);
+    audio.addEventListener('loadedmetadata', handleLoadedMetadata);
+    audio.addEventListener('ended', handleEnded);
+
+    return () => {
+      audio.removeEventListener('timeupdate', handleTimeUpdate);
+      audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
+      audio.removeEventListener('ended', handleEnded);
+    };
+  }, [audioUrl]);
+
+  // Volume control
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.volume = volume[0] / 100;
+    }
+  }, [volume]);
+
   const handlePlayPause = async () => {
     if (!audiobook) return;
 
-    if (!audioUrl && !isPlaying) {
+    if (!audioUrl) {
       // Need to get presigned URL first
+      console.log('[AudiobookDetails] Getting presigned URL...');
       const url = await getPresignedUrl(audiobook.id);
       if (url) {
+        console.log('[AudiobookDetails] Got presigned URL, setting audio source');
         setAudioUrl(url);
-        setIsPlaying(true);
+        // Audio will start playing after URL is set via useEffect
       }
     } else {
-      setIsPlaying(!isPlaying);
+      // Toggle play/pause
+      if (audioRef.current) {
+        if (isPlaying) {
+          audioRef.current.pause();
+          setIsPlaying(false);
+        } else {
+          audioRef.current.play();
+          setIsPlaying(true);
+        }
+      }
     }
+  };
+
+  // Auto-play when URL is set
+  useEffect(() => {
+    if (audioUrl && audioRef.current && !isPlaying) {
+      audioRef.current.play();
+      setIsPlaying(true);
+    }
+  }, [audioUrl]);
+
+  const handleProgressChange = (value: number[]) => {
+    if (audioRef.current && duration) {
+      const newTime = (value[0] / 100) * duration;
+      audioRef.current.currentTime = newTime;
+      setProgress(value);
+    }
+  };
+
+  const handleSkipForward = () => {
+    if (audioRef.current) {
+      audioRef.current.currentTime = Math.min(audioRef.current.currentTime + 15, duration);
+    }
+  };
+
+  const handleSkipBack = () => {
+    if (audioRef.current) {
+      audioRef.current.currentTime = Math.max(audioRef.current.currentTime - 15, 0);
+    }
+  };
+
+  const formatTime = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
   if (loading) {
@@ -295,6 +380,15 @@ const AudiobookDetails = () => {
         </div>
       </main>
 
+      {/* Audio element */}
+      {audioUrl && (
+        <audio
+          ref={audioRef}
+          src={audioUrl}
+          preload="metadata"
+        />
+      )}
+
       {/* Fixed Player */}
       <div className="fixed bottom-0 left-0 right-0 bg-card border-t border-border backdrop-blur-xl shadow-2xl z-50">
         <div className="container mx-auto px-4 md:px-8 py-4">
@@ -302,20 +396,20 @@ const AudiobookDetails = () => {
             <div className="flex items-center gap-4">
               <Slider
                 value={progress}
-                onValueChange={setProgress}
+                onValueChange={handleProgressChange}
                 max={100}
-                step={1}
+                step={0.1}
                 className="flex-1"
               />
               <span className="text-sm text-muted-foreground min-w-[100px] text-right">
-                2:15 / 8:45
+                {formatTime(currentTime)} / {formatTime(duration)}
               </span>
             </div>
 
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3 flex-1">
                 <img
-                  src={audiobook.cover}
+                  src={audiobook.cover_url || "/placeholder.svg"}
                   alt={audiobook.title}
                   className="w-12 h-12 rounded object-cover"
                 />
@@ -328,23 +422,26 @@ const AudiobookDetails = () => {
               </div>
 
               <div className="flex items-center gap-2">
-                <Button size="icon" variant="ghost">
+                <Button size="icon" variant="ghost" onClick={handleSkipBack}>
                   <SkipBack className="w-5 h-5" />
                 </Button>
 
                 <Button
                   size="icon"
                   className="gradient-hero border-0 w-12 h-12"
-                  onClick={() => setIsPlaying(!isPlaying)}
+                  onClick={handlePlayPause}
+                  disabled={isGettingUrl}
                 >
-                  {isPlaying ? (
+                  {isGettingUrl ? (
+                    <span className="text-xs">...</span>
+                  ) : isPlaying ? (
                     <Pause className="w-5 h-5" />
                   ) : (
                     <Play className="w-5 h-5" fill="currentColor" />
                   )}
                 </Button>
 
-                <Button size="icon" variant="ghost">
+                <Button size="icon" variant="ghost" onClick={handleSkipForward}>
                   <SkipForward className="w-5 h-5" />
                 </Button>
               </div>
