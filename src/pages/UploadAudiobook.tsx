@@ -50,8 +50,11 @@ export default function UploadAudiobook() {
 
   const processAudiobookMetadata = async (file: File, id: string) => {
     try {
+      console.log(`[Upload] 📝 Processing metadata for: ${file.name}`);
+      
       // Get duration
       const duration = await getAudioDuration(file);
+      console.log(`[Upload] ⏱️ Duration: ${duration}s`);
       
       // Get metadata from AI
       const { data: metadataResult, error: metadataError } = await supabase.functions.invoke(
@@ -59,10 +62,16 @@ export default function UploadAudiobook() {
         { body: { filename: file.name } }
       );
 
-      if (metadataError) throw metadataError;
+      if (metadataError) {
+        console.error('[Upload] ❌ Metadata error:', metadataError);
+        throw metadataError;
+      }
+      
+      console.log('[Upload] ✅ Metadata:', metadataResult);
 
       // Generate cover
-      const { data: coverResult } = await supabase.functions.invoke(
+      console.log('[Upload] 🎨 Generating cover...');
+      const { data: coverResult, error: coverError } = await supabase.functions.invoke(
         'generate-audiobook-cover',
         { 
           body: { 
@@ -73,13 +82,23 @@ export default function UploadAudiobook() {
         }
       );
 
+      if (coverError) {
+        console.error('[Upload] ❌ Cover generation error:', coverError);
+      }
+
+      console.log('[Upload] Cover result:', {
+        hasImageUrl: !!coverResult?.imageUrl,
+        imageUrlLength: coverResult?.imageUrl?.length,
+        imageUrlPrefix: coverResult?.imageUrl?.substring(0, 50)
+      });
+
       return {
         ...metadataResult,
         durationSeconds: duration,
         coverBlob: coverResult?.imageUrl || null,
       };
     } catch (error) {
-      console.error('Error processing metadata:', error);
+      console.error('[Upload] ❌ Error processing metadata:', error);
       return null;
     }
   };
@@ -411,6 +430,16 @@ export default function UploadAudiobook() {
                             src={audiobook.coverBlob} 
                             alt="Capa gerada"
                             className="w-32 h-32 object-cover rounded"
+                            onError={(e) => {
+                              console.error('[Upload] ❌ Failed to load cover image:', {
+                                audiobookId: audiobook.id,
+                                title: audiobook.title,
+                                coverBlobPrefix: audiobook.coverBlob?.substring(0, 50)
+                              });
+                            }}
+                            onLoad={() => {
+                              console.log('[Upload] ✅ Cover image loaded successfully:', audiobook.title);
+                            }}
                           />
                           <p className="text-xs text-muted-foreground mt-1">Capa gerada por IA</p>
                         </div>
