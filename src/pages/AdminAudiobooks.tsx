@@ -5,9 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, Trash2, Music, Edit, ArrowLeft } from "lucide-react";
+import { Plus, Trash2, Music, Edit, ArrowLeft, Sparkles } from "lucide-react";
 import { useAdmin } from "@/hooks/useAdmin";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useCoverGeneration } from "@/hooks/useCoverGeneration";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -41,6 +42,8 @@ export default function AdminAudiobooks() {
   const [audiobooks, setAudiobooks] = useState<Audiobook[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [generatingCoverId, setGeneratingCoverId] = useState<string | null>(null);
+  const { generateCover } = useCoverGeneration();
 
   useEffect(() => {
     if (!adminLoading && !isAdmin) {
@@ -125,6 +128,28 @@ export default function AdminAudiobooks() {
         variant: "destructive",
       });
     }
+  };
+
+  const handleGenerateCover = async (audiobook: Audiobook) => {
+    setGeneratingCoverId(audiobook.id);
+    
+    const newCoverUrl = await generateCover(
+      audiobook.id,
+      audiobook.title,
+      audiobook.author,
+      audiobook.genre || 'Ficção'
+    );
+
+    if (newCoverUrl) {
+      // Update local state
+      setAudiobooks(audiobooks.map(ab => 
+        ab.id === audiobook.id 
+          ? { ...ab, cover_url: newCoverUrl } 
+          : ab
+      ));
+    }
+    
+    setGeneratingCoverId(null);
   };
 
   const formatDuration = (seconds: number) => {
@@ -219,6 +244,18 @@ export default function AdminAudiobooks() {
                       onCheckedChange={() => toggleGlobal(book.id, book.is_global)}
                     />
                   </div>
+                  {!book.cover_url && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleGenerateCover(book)}
+                      disabled={generatingCoverId === book.id}
+                      className="w-full"
+                    >
+                      <Sparkles className="mr-2 h-4 w-4" />
+                      {generatingCoverId === book.id ? 'Gerando...' : 'Gerar Capa com IA'}
+                    </Button>
+                  )}
                   <div className="flex gap-2">
                     <Button
                       variant="outline"
