@@ -32,6 +32,7 @@ interface Audiobook {
   duration_seconds: number;
   is_global: boolean | null;
   require_login: boolean | null;
+  is_featured: boolean | null;
   created_at: string;
 }
 
@@ -119,6 +120,33 @@ export default function AdminAudiobooks() {
       toast({
         title: "Atualizado",
         description: !currentValue ? "Audiobook agora é público" : "Audiobook agora é privado",
+      });
+    } catch (error: any) {
+      console.error("Error updating audiobook:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível atualizar o audiobook",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const toggleFeatured = async (id: string, currentValue: boolean | null) => {
+    try {
+      const { error } = await supabase
+        .from("audiobooks")
+        .update({ is_featured: !currentValue })
+        .eq("id", id);
+
+      if (error) throw error;
+
+      setAudiobooks(audiobooks.map(ab => 
+        ab.id === id ? { ...ab, is_featured: !currentValue } : ab
+      ));
+
+      toast({
+        title: "Atualizado",
+        description: !currentValue ? "Audiobook adicionado aos destaques" : "Audiobook removido dos destaques",
       });
     } catch (error: any) {
       console.error("Error updating audiobook:", error);
@@ -270,6 +298,15 @@ export default function AdminAudiobooks() {
                       id={`global-${book.id}`}
                       checked={book.is_global ?? false}
                       onCheckedChange={() => toggleGlobal(book.id, book.is_global)}
+                    />
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor={`featured-${book.id}`}>⭐ Destaque</Label>
+                    <Switch
+                      id={`featured-${book.id}`}
+                      checked={book.is_featured ?? false}
+                      onCheckedChange={() => toggleFeatured(book.id, book.is_featured)}
                     />
                   </div>
                   

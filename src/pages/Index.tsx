@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 const Index = () => {
   const [myAudiobooks, setMyAudiobooks] = useState<any[]>([]);
   const [globalAudiobooks, setGlobalAudiobooks] = useState<any[]>([]);
+  const [featuredAudiobooks, setFeaturedAudiobooks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -36,6 +37,22 @@ const Index = () => {
             userId: book.user_id,
             isGlobal: book.is_global
           }));
+          
+          // Separar audiobooks destacados
+          const featured = data.filter((book: any) => book.is_featured);
+          const featuredTransformed = featured.map((book: any) => ({
+            id: book.id,
+            title: book.title,
+            author: book.author,
+            duration: formatDuration(book.duration_seconds),
+            cover: book.cover_url || "/placeholder.svg",
+            rating: 4.5,
+            category: book.genre || "Geral",
+            description: book.description || "Audiobook disponível para reprodução.",
+            userId: book.user_id,
+            isGlobal: book.is_global
+          }));
+          setFeaturedAudiobooks(featuredTransformed);
           
           // Separar audiobooks do usuário dos globais
           if (user) {
@@ -78,13 +95,16 @@ const Index = () => {
             </div>
           ) : (
             <>
+              {featuredAudiobooks.length > 0 && (
+                <CategoryRow title="⭐ Em Destaque" audiobooks={featuredAudiobooks} />
+              )}
               {myAudiobooks.length > 0 && (
                 <CategoryRow title="Meus Audiobooks" audiobooks={myAudiobooks} />
               )}
               {globalAudiobooks.length > 0 ? (
                 <CategoryRow title="Todos os Audiobooks" audiobooks={globalAudiobooks} />
               ) : (
-                !myAudiobooks.length && (
+                !myAudiobooks.length && !featuredAudiobooks.length && (
                   <div className="container mx-auto px-4 md:px-8 py-20 text-center">
                     <p className="text-muted-foreground">Nenhum audiobook disponível ainda.</p>
                     <p className="text-sm text-muted-foreground mt-2">Faça upload de audiobooks para começar!</p>
