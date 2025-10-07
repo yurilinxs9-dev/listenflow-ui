@@ -116,16 +116,22 @@ async function searchISBNdb(title: string, author: string) {
 
 async function generateCoverWithAI(title: string, author: string, genre: string) {
   try {
-    console.log("Generating cover with AI as fallback...");
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     
     if (!LOVABLE_API_KEY) {
-      console.error("LOVABLE_API_KEY not configured");
+      console.error("❌ [AI] LOVABLE_API_KEY not configured");
       return null;
     }
+    
+    console.log("🎨 [AI] Starting AI generation with Lovable AI");
+    console.log("🎨 [AI] Title:", title);
+    console.log("🎨 [AI] Author:", author);
+    console.log("🎨 [AI] Genre:", genre);
 
     const prompt = `Create a professional audiobook cover for "${title}" by ${author}. Genre: ${genre}. The cover should be elegant, modern, and visually appealing with the book title prominently displayed. High quality, professional book cover design.`;
 
+    console.log("🎨 [AI] Sending request to Lovable AI...");
+    
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -144,19 +150,33 @@ async function generateCoverWithAI(title: string, author: string, genre: string)
       }),
     });
 
-    if (aiResponse.ok) {
-      const aiData = await aiResponse.json();
-      const imageUrl = aiData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
-      
-      if (imageUrl) {
-        console.log("AI cover generated successfully");
-        return imageUrl;
-      }
+    console.log("🎨 [AI] Response status:", aiResponse.status);
+    
+    if (!aiResponse.ok) {
+      const errorText = await aiResponse.text();
+      console.error("❌ [AI] API error:", aiResponse.status, errorText);
+      return null;
+    }
+
+    const aiData = await aiResponse.json();
+    console.log("🎨 [AI] Response data keys:", Object.keys(aiData));
+    
+    const imageUrl = aiData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+    
+    if (imageUrl) {
+      console.log("✅ [AI] Cover generated successfully");
+      console.log("🎨 [AI] Image URL length:", imageUrl.length);
+      console.log("🎨 [AI] Image URL prefix:", imageUrl.substring(0, 50));
+      return imageUrl;
+    } else {
+      console.error("❌ [AI] No image URL in response");
+      console.error("❌ [AI] Response structure:", JSON.stringify(aiData, null, 2));
+      return null;
     }
   } catch (error) {
-    console.error("AI generation error:", error);
+    console.error("❌ [AI] Exception during generation:", error);
+    return null;
   }
-  return null;
 }
 
 serve(async (req) => {
@@ -186,6 +206,8 @@ serve(async (req) => {
     // Download the image and convert to base64 to avoid CORS issues
     let imageBase64 = null;
     let isLowQuality = false;
+    let thumbnailUrl = null; // Save thumbnail URL as fallback
+    let thumbnailBase64 = null; // Save thumbnail base64 as fallback
     
     if (coverUrl) {
       try {
@@ -197,20 +219,25 @@ serve(async (req) => {
           
           console.log(`📦 [Cover Download] Image size: ${imageBytes.byteLength} bytes`);
           
+          // Convert to base64 first (as fallback)
+          let binary = '';
+          for (let i = 0; i < imageBytes.byteLength; i++) {
+            binary += String.fromCharCode(imageBytes[i]);
+          }
+          const base64Image = `data:image/jpeg;base64,${btoa(binary)}`;
+          
           // Check if image is too small (likely a thumbnail)
           // Most book covers should be at least 50KB for decent quality
           if (imageBytes.byteLength < 50000) {
-            console.log("⚠️ [Cover Download] Image too small (likely thumbnail), will generate with AI instead");
+            console.log("⚠️ [Cover Download] Image too small (likely thumbnail), will try AI but keeping as fallback");
             isLowQuality = true;
+            thumbnailUrl = coverUrl; // Save as fallback
+            thumbnailBase64 = base64Image; // Save as fallback
             coverUrl = null; // Reset to trigger AI generation
           } else {
-            // Convert to base64
-            let binary = '';
-            for (let i = 0; i < imageBytes.byteLength; i++) {
-              binary += String.fromCharCode(imageBytes[i]);
-            }
-            imageBase64 = `data:image/jpeg;base64,${btoa(binary)}`;
-            console.log("✅ [Cover Download] Cover converted to base64");
+            // Good quality image
+            imageBase64 = base64Image;
+            console.log("✅ [Cover Download] Good quality cover converted to base64");
           }
         } else {
           console.error(`❌ [Cover Download] Failed to download image: ${imageResponse.status}`);
@@ -250,7 +277,13 @@ serve(async (req) => {
           console.error("❌ [AI Download] Error downloading AI image:", error);
         }
       } else {
-        console.error("❌ [AI Generation] Failed to generate AI cover");
+        console.warn("⚠️ [AI Generation] AI generation failed, falling back to thumbnail");
+        // Use thumbnail as fallback
+        if (thumbnailBase64) {
+          imageBase64 = thumbnailBase64;
+          coverUrl = thumbnailUrl;
+          console.log("✅ [Fallback] Using thumbnail as fallback");
+        }
       }
     }
     
