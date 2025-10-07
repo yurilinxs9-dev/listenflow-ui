@@ -299,12 +299,15 @@ export default function UploadAudiobook() {
     }
 
     console.log('[Submit] ✅ Todos os audiobooks são válidos');
-    console.log('[Submit] Iniciando uploads em lotes de 3...');
+    console.log('[Submit] Iniciando uploads sequenciais (um por um)...');
     setIsUploading(true);
 
     try {
-      // Função para processar upload de um audiobook
-      const uploadSingleAudiobook = async (audiobook: AudiobookForm, index: number) => {
+      const results = [];
+      
+      // Processar uploads sequencialmente, um por um
+      for (let index = 0; index < audiobooks.length; index++) {
+        const audiobook = audiobooks[index];
         try {
           const fileSize = (audiobook.audioFile.size / 1024 / 1024).toFixed(2);
           console.log(`[Upload ${index + 1}/${audiobooks.length}] 🚀 Iniciando: ${audiobook.title} (${fileSize} MB)`);
@@ -330,7 +333,8 @@ export default function UploadAudiobook() {
           } else if (existingAudiobooks && existingAudiobooks.length > 0) {
             console.log(`[Upload ${index + 1}] ⏭️ PULADO (já existe): ${audiobook.title}`);
             updateAudiobook(audiobook.id, 'error', 'Já existe no banco de dados');
-            return { success: false, title: audiobook.title, skipped: true };
+            results.push({ success: false, title: audiobook.title, skipped: true });
+            continue;
           }
           
           // Atualizar progresso: iniciando
@@ -477,30 +481,16 @@ export default function UploadAudiobook() {
 
           console.log(`[Upload ${index + 1}] 🎉 CONCLUÍDO COM SUCESSO: ${audiobook.title}`);
           updateAudiobook(audiobook.id, 'uploadProgress', 100);
-          return { success: true, title: audiobook.title };
+          results.push({ success: true, title: audiobook.title });
         } catch (error: any) {
           console.error(`[Upload ${index + 1}] 💥 FALHOU: ${audiobook.title}`, error);
           updateAudiobook(audiobook.id, 'error', error.message || 'Erro desconhecido');
           updateAudiobook(audiobook.id, 'uploadProgress', 0);
-          return { success: false, title: audiobook.title };
+          results.push({ success: false, title: audiobook.title });
         }
-      };
-
-      // Processar em lotes de 3 para otimizar
-      const batchSize = 3;
-      const results = [];
-      
-      for (let i = 0; i < audiobooks.length; i += batchSize) {
-        const batch = audiobooks.slice(i, i + batchSize);
-        console.log(`[Submit] 📦 Processando lote ${Math.floor(i / batchSize) + 1}/${Math.ceil(audiobooks.length / batchSize)}`);
-        const batchResults = await Promise.all(
-          batch.map((audiobook, batchIndex) => 
-            uploadSingleAudiobook(audiobook, i + batchIndex)
-          )
-        );
-        results.push(...batchResults);
       }
-      const successCount = results.filter(r => r.success).length;
+      
+      const successCount = results.filter((r: any) => r.success).length;
       const skippedCount = results.filter((r: any) => !r.success && r.skipped).length;
       const errorCount = results.filter((r: any) => !r.success && !r.skipped).length;
 
