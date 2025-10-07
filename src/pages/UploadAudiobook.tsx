@@ -234,33 +234,40 @@ export default function UploadAudiobook() {
 
     try {
       // Upload todos os audiobooks em paralelo para maior velocidade
-      const uploadPromises = audiobooks.map(async (audiobook) => {
+      const uploadPromises = audiobooks.map(async (audiobook, index) => {
         try {
-          console.log(`[Upload] Iniciando upload de: ${audiobook.title}`);
+          const fileSize = (audiobook.audioFile.size / 1024 / 1024).toFixed(2);
+          console.log(`[Upload ${index + 1}/${audiobooks.length}] 🚀 Iniciando: ${audiobook.title} (${fileSize} MB)`);
           
           // Atualizar progresso: iniciando
           updateAudiobook(audiobook.id, 'uploadProgress', 10);
+          console.log(`[Upload ${index + 1}] ⏳ Progresso: 10% (Preparando...)`);
           
           // Gerar nome único para o arquivo
           const audioPath = generateUniqueFilename(audiobook.audioFile.name, user.id);
-          console.log(`[Upload] Path do áudio: ${audioPath}`);
+          console.log(`[Upload ${index + 1}] 📁 Path: ${audioPath}`);
           
           // Atualizar progresso: fazendo upload do áudio
           updateAudiobook(audiobook.id, 'uploadProgress', 20);
+          console.log(`[Upload ${index + 1}] ⏳ Progresso: 20% (Enviando áudio ${fileSize} MB...)`);
           
+          const uploadStart = Date.now();
           const { error: audioError } = await supabase.storage
             .from("audiobooks")
             .upload(audioPath, audiobook.audioFile);
 
+          const uploadTime = ((Date.now() - uploadStart) / 1000).toFixed(1);
+          
           if (audioError) {
-            console.error(`[Upload] Erro ao enviar áudio ${audiobook.title}:`, audioError);
+            console.error(`[Upload ${index + 1}] ❌ ERRO ao enviar áudio:`, audioError);
             throw audioError;
           }
           
-          console.log(`[Upload] Áudio enviado com sucesso: ${audiobook.title}`);
+          console.log(`[Upload ${index + 1}] ✅ Áudio enviado em ${uploadTime}s: ${audiobook.title}`);
 
           // Atualizar progresso: áudio enviado
           updateAudiobook(audiobook.id, 'uploadProgress', 50);
+          console.log(`[Upload ${index + 1}] ⏳ Progresso: 50% (Processando capa...)`);
 
           const { data: { publicUrl: audioUrl } } = supabase.storage
             .from("audiobooks")
@@ -364,21 +371,29 @@ export default function UploadAudiobook() {
             throw dbError;
           }
 
-          console.log(`[Upload] ✅ Audiobook enviado com sucesso: ${audiobook.title}`);
+          console.log(`[Upload ${index + 1}] 🎉 CONCLUÍDO COM SUCESSO: ${audiobook.title}`);
           updateAudiobook(audiobook.id, 'uploadProgress', 100);
-          return { success: true };
+          return { success: true, title: audiobook.title };
         } catch (error: any) {
-          console.error(`[Upload] ❌ Erro ao enviar ${audiobook.title}:`, error);
+          console.error(`[Upload ${index + 1}] 💥 FALHOU: ${audiobook.title}`, error);
           updateAudiobook(audiobook.id, 'error', error.message || 'Erro desconhecido');
           updateAudiobook(audiobook.id, 'uploadProgress', 0);
-          return { success: false };
+          return { success: false, title: audiobook.title };
         }
       });
 
       // Aguardar todos os uploads terminarem
+      console.log('[Submit] ⏳ Aguardando conclusão de todos os uploads...');
       const results = await Promise.all(uploadPromises);
       const successCount = results.filter(r => r.success).length;
       const errorCount = results.filter(r => !r.success).length;
+
+      console.log('[Submit] 📊 RESUMO FINAL:');
+      console.log(`[Submit] ✅ Sucessos: ${successCount}`);
+      console.log(`[Submit] ❌ Falhas: ${errorCount}`);
+      results.forEach((r, i) => {
+        console.log(`[Submit] ${r.success ? '✅' : '❌'} ${i + 1}. ${r.title}`);
+      });
 
       if (successCount > 0) {
         toast({
