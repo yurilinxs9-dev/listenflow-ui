@@ -219,6 +219,17 @@ export default function UploadAudiobook() {
     console.log('[Submit] 🚀 Iniciando processo de upload');
     console.log('[Submit] Total de audiobooks:', audiobooks.length);
     
+    // Log detalhado de cada audiobook
+    audiobooks.forEach((ab, idx) => {
+      console.log(`[Submit] Audiobook ${idx + 1}:`, {
+        title: ab.title || '(vazio)',
+        author: ab.author || '(vazio)',
+        duration: ab.durationSeconds,
+        isProcessing: ab.isProcessing,
+        hasError: !!ab.error
+      });
+    });
+    
     if (!user) {
       console.log('[Submit] ❌ Usuário não logado');
       toast({
@@ -242,15 +253,29 @@ export default function UploadAudiobook() {
       return;
     }
 
+    // Verificar se algum audiobook ainda está processando
+    const processingAudiobooks = audiobooks.filter(ab => ab.isProcessing);
+    if (processingAudiobooks.length > 0) {
+      console.log('[Submit] ⏳ Ainda processando:', processingAudiobooks.length);
+      toast({
+        title: "Aguarde",
+        description: `${processingAudiobooks.length} audiobook(s) ainda está(ão) sendo processado(s) pela IA...`,
+        variant: "default",
+      });
+      return;
+    }
+
     // Validar campos obrigatórios
     console.log('[Submit] Validando campos obrigatórios...');
     const invalidAudiobooks = audiobooks.filter(ab => {
       const isInvalid = !ab.title || !ab.author || ab.durationSeconds === 0;
       if (isInvalid) {
         console.log('[Submit] ❌ Audiobook inválido:', {
-          title: ab.title,
-          author: ab.author,
-          duration: ab.durationSeconds
+          id: ab.id,
+          title: ab.title || '(vazio)',
+          author: ab.author || '(vazio)',
+          duration: ab.durationSeconds,
+          fileName: ab.audioFile.name
         });
       }
       return isInvalid;
@@ -258,9 +283,16 @@ export default function UploadAudiobook() {
     
     if (invalidAudiobooks.length > 0) {
       console.log('[Submit] ❌ Audiobooks inválidos encontrados:', invalidAudiobooks.length);
+      const missingFields = invalidAudiobooks.map(ab => {
+        const missing = [];
+        if (!ab.title) missing.push('título');
+        if (!ab.author) missing.push('autor');
+        if (ab.durationSeconds === 0) missing.push('duração');
+        return `${ab.audioFile.name}: ${missing.join(', ')}`;
+      });
       toast({
-        title: "Erro",
-        description: "Preencha título, autor e duração para todos os audiobooks",
+        title: "Campos obrigatórios faltando",
+        description: `Preencha: ${missingFields[0]}${missingFields.length > 1 ? ' e mais ' + (missingFields.length - 1) : ''}`,
         variant: "destructive",
       });
       return;
