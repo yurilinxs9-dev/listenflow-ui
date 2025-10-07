@@ -1,8 +1,9 @@
-import { Play, Plus, Info, Heart } from "lucide-react";
+import { Play, Plus, Info, Heart, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useFavorites } from "@/hooks/useFavorites";
+import { useAuth } from "@/hooks/useAuth";
 
 interface AudiobookCardProps {
   id: string;
@@ -22,10 +23,25 @@ export const AudiobookCard = ({
   progress = 0,
 }: AudiobookCardProps) => {
   const [isHovered, setIsHovered] = useState(false);
+  const [imageError, setImageError] = useState(false);
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { toggleFavorite, isFavorite, isToggling } = useFavorites();
 
   const isProcessing = isToggling[id] || false;
+
+  const handleImageError = () => {
+    setImageError(true);
+  };
+
+  const handlePlayClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!user) {
+      navigate('/auth');
+    } else {
+      navigate(`/audiobook/${id}`);
+    }
+  };
 
   return (
     <div
@@ -42,8 +58,10 @@ export const AudiobookCard = ({
         }}
       >
         <img
-          src={cover}
+          src={imageError ? "/placeholder.svg" : cover}
           alt={title}
+          loading="lazy"
+          onError={handleImageError}
           className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
         />
         
@@ -63,13 +81,15 @@ export const AudiobookCard = ({
         >
           <Button
             size="icon"
-            className="gradient-hero border-0 glow-effect"
-            onClick={(e) => {
-              e.stopPropagation();
-              navigate(`/audiobook/${id}`);
-            }}
+            className="gradient-hero border-0 glow-effect relative"
+            onClick={handlePlayClick}
+            title={!user ? "Faça login para ouvir" : "Reproduzir"}
           >
-            <Play className="w-5 h-5" fill="currentColor" />
+            {!user ? (
+              <Lock className="w-5 h-5" />
+            ) : (
+              <Play className="w-5 h-5" fill="currentColor" />
+            )}
           </Button>
           
           <Button

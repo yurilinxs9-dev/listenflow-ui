@@ -19,8 +19,6 @@ export const Header = () => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
 
-  console.log('[Header] Render - user:', user?.id, 'isAdmin:', isAdmin);
-
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
