@@ -273,30 +273,60 @@ export default function UploadAudiobook() {
             console.log(`[Upload] Capa customizada enviada: ${coverUrl}`);
           } else if (audiobook.coverBlob) {
             try {
-              console.log(`[Upload] Baixando e enviando capa gerada pela IA`);
-              
-              // Tentar baixar a capa da URL
-              const coverBlob = await fetch(audiobook.coverBlob).then(r => {
-                if (!r.ok) throw new Error(`Falha ao baixar capa: ${r.status}`);
-                return r.blob();
+              console.log(`[Upload] 🎨 Processing AI-generated cover`);
+              console.log(`[Upload] Cover blob type:`, {
+                isDataUrl: audiobook.coverBlob.startsWith('data:'),
+                length: audiobook.coverBlob.length,
+                prefix: audiobook.coverBlob.substring(0, 50)
               });
               
-              const coverPath = generateUniqueFilename('cover.png', user.id);
+              // Convert base64 or URL to blob
+              let coverBlob: Blob;
+              
+              if (audiobook.coverBlob.startsWith('data:')) {
+                console.log(`[Upload] Converting base64 to blob...`);
+                // Extract base64 data
+                const base64Data = audiobook.coverBlob.split(',')[1];
+                const byteCharacters = atob(base64Data);
+                const byteNumbers = new Array(byteCharacters.length);
+                for (let i = 0; i < byteCharacters.length; i++) {
+                  byteNumbers[i] = byteCharacters.charCodeAt(i);
+                }
+                const byteArray = new Uint8Array(byteNumbers);
+                coverBlob = new Blob([byteArray], { type: 'image/jpeg' });
+                console.log(`[Upload] ✅ Base64 converted to blob, size: ${coverBlob.size} bytes`);
+              } else {
+                console.log(`[Upload] Downloading cover from URL...`);
+                const response = await fetch(audiobook.coverBlob);
+                if (!response.ok) throw new Error(`Failed to download: ${response.status}`);
+                coverBlob = await response.blob();
+                console.log(`[Upload] ✅ Cover downloaded, size: ${coverBlob.size} bytes`);
+              }
+              
+              const coverPath = generateUniqueFilename('cover.jpg', user.id);
+              console.log(`[Upload] 📤 Uploading cover to storage: ${coverPath}`);
+              
               const { error: coverError } = await supabase.storage
                 .from("audiobook-covers")
                 .upload(coverPath, coverBlob);
 
-              if (!coverError) {
-                const { data: { publicUrl } } = supabase.storage
-                  .from("audiobook-covers")
-                  .getPublicUrl(coverPath);
-                coverUrl = publicUrl;
-                console.log(`[Upload] Capa IA enviada: ${coverUrl}`);
-              } else {
-                console.warn(`[Upload] Erro ao enviar capa IA, continuando sem capa:`, coverError);
+              if (coverError) {
+                console.error(`[Upload] ❌ Storage upload error:`, coverError);
+                throw coverError;
               }
-            } catch (coverFetchError) {
-              console.warn(`[Upload] Falha ao baixar capa da IA, continuando sem capa:`, coverFetchError);
+
+              const { data: { publicUrl } } = supabase.storage
+                .from("audiobook-covers")
+                .getPublicUrl(coverPath);
+              
+              coverUrl = publicUrl;
+              console.log(`[Upload] ✅ Cover uploaded successfully: ${coverUrl}`);
+            } catch (coverFetchError: any) {
+              console.error(`[Upload] ❌ Cover upload failed:`, coverFetchError);
+              console.error(`[Upload] Error details:`, {
+                message: coverFetchError.message,
+                stack: coverFetchError.stack
+              });
             }
           }
           
