@@ -246,6 +246,23 @@ export default function UploadAudiobook() {
           }
           console.log(`[Upload ${index + 1}] 🔐 Token renovado, válido até: ${new Date(currentSession.expires_at! * 1000).toLocaleTimeString()}`);
           
+          // Verificar se já existe audiobook com mesmo título e autor
+          console.log(`[Upload ${index + 1}] 🔍 Verificando duplicatas...`);
+          const { data: existingAudiobooks, error: checkError } = await supabase
+            .from('audiobooks')
+            .select('id, title, author')
+            .eq('title', audiobook.title.trim())
+            .eq('author', audiobook.author.trim())
+            .eq('user_id', user.id);
+
+          if (checkError) {
+            console.error(`[Upload ${index + 1}] ❌ Erro ao verificar duplicatas:`, checkError);
+          } else if (existingAudiobooks && existingAudiobooks.length > 0) {
+            console.log(`[Upload ${index + 1}] ⏭️ PULADO (já existe): ${audiobook.title}`);
+            updateAudiobook(audiobook.id, 'error', 'Já existe no banco de dados');
+            return { success: false, title: audiobook.title, skipped: true };
+          }
+          
           // Atualizar progresso: iniciando
           updateAudiobook(audiobook.id, 'uploadProgress', 10);
           console.log(`[Upload ${index + 1}] ⏳ Progresso: 10% (Preparando...)`);
@@ -393,21 +410,30 @@ export default function UploadAudiobook() {
       console.log('[Submit] ⏳ Aguardando conclusão de todos os uploads...');
       const results = await Promise.all(uploadPromises);
       const successCount = results.filter(r => r.success).length;
-      const errorCount = results.filter(r => !r.success).length;
+      const skippedCount = results.filter((r: any) => !r.success && r.skipped).length;
+      const errorCount = results.filter((r: any) => !r.success && !r.skipped).length;
 
       console.log('[Submit] 📊 RESUMO FINAL:');
       console.log(`[Submit] ✅ Sucessos: ${successCount}`);
+      console.log(`[Submit] ⏭️ Pulados (duplicados): ${skippedCount}`);
       console.log(`[Submit] ❌ Falhas: ${errorCount}`);
-      results.forEach((r, i) => {
-        console.log(`[Submit] ${r.success ? '✅' : '❌'} ${i + 1}. ${r.title}`);
+      results.forEach((r: any, i) => {
+        const icon = r.success ? '✅' : (r.skipped ? '⏭️' : '❌');
+        console.log(`[Submit] ${icon} ${i + 1}. ${r.title}`);
       });
 
       if (successCount > 0) {
+        const description = `${successCount} audiobook(s) enviado(s)${skippedCount > 0 ? `, ${skippedCount} pulado(s) (já existente)` : ''}${errorCount > 0 ? `, ${errorCount} falharam` : ''}`;
         toast({
           title: "Sucesso!",
-          description: `${successCount} audiobook(s) enviado(s) com sucesso${errorCount > 0 ? `, ${errorCount} falharam` : ''}`,
+          description,
         });
         navigate("/my-audiobooks");
+      } else if (skippedCount > 0) {
+        toast({
+          title: "Nenhum upload realizado",
+          description: `${skippedCount} audiobook(s) já existem no banco de dados`,
+        });
       } else {
         toast({
           title: "Erro",
