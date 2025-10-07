@@ -244,7 +244,8 @@ export default function AdminAudiobooks() {
                       onCheckedChange={() => toggleGlobal(book.id, book.is_global)}
                     />
                   </div>
-                  {!book.cover_url && (
+                  
+                  {(!book.cover_url || book.cover_url === '') && (
                     <Button
                       variant="outline"
                       size="sm"
@@ -256,6 +257,7 @@ export default function AdminAudiobooks() {
                       {generatingCoverId === book.id ? 'Gerando...' : 'Gerar Capa com IA'}
                     </Button>
                   )}
+                  
                   <div className="flex gap-2">
                     <Button
                       variant="outline"
