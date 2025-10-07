@@ -131,25 +131,53 @@ export default function AdminAudiobooks() {
   };
 
   const handleGenerateCover = async (audiobook: Audiobook) => {
+    console.log('[Admin] 🚀 Starting cover generation for:', {
+      id: audiobook.id,
+      title: audiobook.title,
+      author: audiobook.author,
+      genre: audiobook.genre,
+      currentCoverUrl: audiobook.cover_url
+    });
+    
     setGeneratingCoverId(audiobook.id);
     
-    const newCoverUrl = await generateCover(
-      audiobook.id,
-      audiobook.title,
-      audiobook.author,
-      audiobook.genre || 'Ficção'
-    );
+    try {
+      const newCoverUrl = await generateCover(
+        audiobook.id,
+        audiobook.title,
+        audiobook.author,
+        audiobook.genre || 'Ficção'
+      );
 
-    if (newCoverUrl) {
-      // Update local state
-      setAudiobooks(audiobooks.map(ab => 
-        ab.id === audiobook.id 
-          ? { ...ab, cover_url: newCoverUrl } 
-          : ab
-      ));
+      console.log('[Admin] Cover generation result:', newCoverUrl);
+
+      if (newCoverUrl) {
+        console.log('[Admin] ✅ Reloading audiobooks to get updated cover');
+        // Reload audiobooks to get the updated cover
+        await loadAudiobooks();
+        
+        toast({
+          title: "Sucesso!",
+          description: "Capa gerada e atualizada com sucesso",
+        });
+      } else {
+        console.error('[Admin] ❌ No cover URL returned');
+        toast({
+          title: "Erro",
+          description: "Não foi possível gerar a capa. Verifique os logs do console.",
+          variant: "destructive",
+        });
+      }
+    } catch (error: any) {
+      console.error('[Admin] ❌ Error in handleGenerateCover:', error);
+      toast({
+        title: "Erro",
+        description: error.message || "Erro desconhecido ao gerar capa",
+        variant: "destructive",
+      });
+    } finally {
+      setGeneratingCoverId(null);
     }
-    
-    setGeneratingCoverId(null);
   };
 
   const formatDuration = (seconds: number) => {
@@ -249,13 +277,7 @@ export default function AdminAudiobooks() {
                     variant="outline"
                     size="sm"
                     onClick={() => {
-                      console.log('[Admin] Generating cover for:', {
-                        id: book.id,
-                        title: book.title,
-                        author: book.author,
-                        genre: book.genre,
-                        currentCoverUrl: book.cover_url
-                      });
+                      console.log('[Admin] 🎯 Button clicked for:', book.title);
                       handleGenerateCover(book);
                     }}
                     disabled={generatingCoverId === book.id}
