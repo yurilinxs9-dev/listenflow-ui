@@ -65,28 +65,44 @@ export const useCoverGeneration = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
+      console.log('[CoverGen] 📤 User authenticated:', user.id);
+
       // Upload to storage
       const coverPath = `${user.id}/${Date.now()}_${title.replace(/[^a-zA-Z0-9]/g, '_')}_cover.png`;
-      const { error: uploadError } = await supabase.storage
+      console.log('[CoverGen] 📤 Uploading to path:', coverPath);
+      console.log('[CoverGen] 📦 Blob size:', imageBlob.size, 'bytes');
+      
+      const { error: uploadError, data: uploadData } = await supabase.storage
         .from('audiobook-covers')
         .upload(coverPath, imageBlob);
 
-      if (uploadError) throw uploadError;
+      console.log('[CoverGen] Upload result:', { uploadData, uploadError });
+
+      if (uploadError) {
+        console.error('[CoverGen] ❌ Upload error:', uploadError);
+        throw uploadError;
+      }
 
       // Get public URL
       const { data: { publicUrl } } = supabase.storage
         .from('audiobook-covers')
         .getPublicUrl(coverPath);
 
-      console.log('[CoverGen] Cover uploaded, updating database...');
+      console.log('[CoverGen] 📸 Public URL:', publicUrl);
+      console.log('[CoverGen] 💾 Updating audiobook:', audiobookId, 'with cover URL:', publicUrl);
 
       // Update audiobook record
-      const { error: updateError } = await supabase
+      const { error: updateError, data: updateData } = await supabase
         .from('audiobooks')
         .update({ cover_url: publicUrl })
         .eq('id', audiobookId);
 
-      if (updateError) throw updateError;
+      console.log('[CoverGen] Database update result:', { updateData, updateError });
+
+      if (updateError) {
+        console.error('[CoverGen] ❌ Database update error:', updateError);
+        throw updateError;
+      }
 
       console.log('[CoverGen] ✅ Cover generated successfully');
 
