@@ -148,7 +148,7 @@ export default function UploadAudiobook() {
   };
 
   const updateAudiobook = (id: string, field: keyof AudiobookForm, value: any) => {
-    setAudiobooks(audiobooks.map(ab => 
+    setAudiobooks(prev => prev.map(ab => 
       ab.id === id ? { ...ab, [field]: value } : ab
     ));
   };
