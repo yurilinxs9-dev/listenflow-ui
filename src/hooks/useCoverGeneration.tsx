@@ -10,7 +10,7 @@ export const useCoverGeneration = () => {
     setIsGenerating(true);
     
     try {
-      console.log('[CoverGen] Generating cover for:', title);
+      console.log('[CoverGen] 🎨 Starting cover generation for:', { title, author, genre });
       
       // Call the cover generation edge function
       const { data: coverResult, error: coverError } = await supabase.functions.invoke(
@@ -24,13 +24,19 @@ export const useCoverGeneration = () => {
         }
       );
 
-      if (coverError) throw coverError;
+      console.log('[CoverGen] Edge function response:', { coverResult, coverError });
+
+      if (coverError) {
+        console.error('[CoverGen] ❌ Edge function error:', coverError);
+        throw coverError;
+      }
 
       if (!coverResult?.imageUrl) {
+        console.error('[CoverGen] ❌ No image URL in response:', coverResult);
         throw new Error('No image URL returned from cover generation');
       }
 
-      console.log('[CoverGen] Cover generated, uploading to storage...');
+      console.log('[CoverGen] ✅ Cover URL received, uploading to storage...');
 
       let imageBlob: Blob;
 
@@ -91,10 +97,18 @@ export const useCoverGeneration = () => {
 
       return publicUrl;
     } catch (error: any) {
-      console.error('[CoverGen] Error:', error);
+      console.error('[CoverGen] ❌ Complete error:', error);
+      
+      let errorMessage = 'Não foi possível gerar a capa';
+      if (error.message) {
+        errorMessage = error.message;
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      }
+      
       toast({
         title: 'Erro ao gerar capa',
-        description: error.message || 'Não foi possível gerar a capa',
+        description: errorMessage,
         variant: 'destructive',
       });
       return null;

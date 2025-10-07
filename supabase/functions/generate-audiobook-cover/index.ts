@@ -167,34 +167,44 @@ serve(async (req) => {
   try {
     const { title, author, genre } = await req.json();
     
-    console.log(`Searching cover for: "${title}" by ${author}`);
+    console.log(`🔍 [Cover Search] Starting for: "${title}" by ${author} (${genre})`);
     
     // Try multiple sources in order
+    console.log('📚 [Cover Search] Step 1: Trying Google Books...');
     let coverUrl = await searchGoogleBooks(title, author);
     
     if (!coverUrl) {
+      console.log('📖 [Cover Search] Step 2: Trying Open Library...');
       coverUrl = await searchOpenLibrary(title, author);
     }
     
     if (!coverUrl) {
+      console.log('🔢 [Cover Search] Step 3: Trying ISBN search...');
       coverUrl = await searchISBNdb(title, author);
     }
     
     // If no real cover found, generate with AI
     if (!coverUrl) {
-      console.log("No real cover found, generating with AI...");
+      console.log("🎨 [Cover Search] No real cover found, generating with AI...");
       coverUrl = await generateCoverWithAI(title, author, genre || "Ficção");
+      
+      if (!coverUrl) {
+        console.error('❌ [Cover Search] AI generation also failed');
+        throw new Error('Failed to generate cover with AI');
+      }
     }
     
     // Download the image and convert to base64 to avoid CORS issues
     let imageBase64 = null;
     if (coverUrl) {
       try {
-        console.log("Downloading cover image...");
+        console.log("⬇️ [Cover Download] Downloading cover image...");
         const imageResponse = await fetch(coverUrl);
         if (imageResponse.ok) {
           const imageBuffer = await imageResponse.arrayBuffer();
           const imageBytes = new Uint8Array(imageBuffer);
+          
+          console.log(`📦 [Cover Download] Image size: ${imageBytes.byteLength} bytes`);
           
           // Convert to base64
           let binary = '';
@@ -202,14 +212,16 @@ serve(async (req) => {
             binary += String.fromCharCode(imageBytes[i]);
           }
           imageBase64 = `data:image/jpeg;base64,${btoa(binary)}`;
-          console.log("Cover image downloaded and converted to base64");
+          console.log("✅ [Cover Download] Cover converted to base64");
         } else {
-          console.error("Failed to download image:", imageResponse.status);
+          console.error(`❌ [Cover Download] Failed to download image: ${imageResponse.status}`);
         }
       } catch (error) {
-        console.error("Error downloading image:", error);
+        console.error("❌ [Cover Download] Error downloading image:", error);
       }
     }
+    
+    console.log(`✅ [Cover Search] Returning ${imageBase64 ? 'base64' : 'URL'} image`);
     
     return new Response(
       JSON.stringify({ imageUrl: imageBase64 || coverUrl }),
