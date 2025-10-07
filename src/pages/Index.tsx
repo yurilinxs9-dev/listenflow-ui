@@ -5,8 +5,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState } from "react";
 
 const Index = () => {
-  const [myAudiobooks, setMyAudiobooks] = useState<any[]>([]);
-  const [globalAudiobooks, setGlobalAudiobooks] = useState<any[]>([]);
+  const [myAudiobooksByCategory, setMyAudiobooksByCategory] = useState<Record<string, any[]>>({});
+  const [globalAudiobooksByCategory, setGlobalAudiobooksByCategory] = useState<Record<string, any[]>>({});
   const [featuredAudiobooks, setFeaturedAudiobooks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -54,15 +54,27 @@ const Index = () => {
           }));
           setFeaturedAudiobooks(featuredTransformed);
           
-          // Separar audiobooks do usuário dos globais
+          // Função para agrupar audiobooks por categoria
+          const groupByCategory = (books: any[]) => {
+            return books.reduce((acc, book) => {
+              const category = book.category || "Geral";
+              if (!acc[category]) {
+                acc[category] = [];
+              }
+              acc[category].push(book);
+              return acc;
+            }, {} as Record<string, any[]>);
+          };
+          
+          // Separar audiobooks do usuário dos globais e agrupar por categoria
           if (user) {
             const userBooks = transformed.filter(book => book.userId === user.id);
             const otherBooks = transformed.filter(book => book.userId !== user.id || book.isGlobal);
-            setMyAudiobooks(userBooks);
-            setGlobalAudiobooks(otherBooks);
+            setMyAudiobooksByCategory(groupByCategory(userBooks));
+            setGlobalAudiobooksByCategory(groupByCategory(otherBooks));
           } else {
-            setMyAudiobooks([]);
-            setGlobalAudiobooks(transformed);
+            setMyAudiobooksByCategory({});
+            setGlobalAudiobooksByCategory(groupByCategory(transformed));
           }
         }
       } catch (error) {
@@ -95,16 +107,42 @@ const Index = () => {
             </div>
           ) : (
             <>
+              {/* Audiobooks em Destaque */}
               {featuredAudiobooks.length > 0 && (
                 <CategoryRow title="⭐ Em Destaque" audiobooks={featuredAudiobooks} />
               )}
-              {myAudiobooks.length > 0 && (
-                <CategoryRow title="Meus Audiobooks" audiobooks={myAudiobooks} />
+              
+              {/* Meus Audiobooks por Categoria */}
+              {Object.keys(myAudiobooksByCategory).length > 0 && (
+                <>
+                  {Object.keys(myAudiobooksByCategory)
+                    .sort()
+                    .map((category) => (
+                      <CategoryRow
+                        key={`my-${category}`}
+                        title={`Meus Audiobooks - ${category}`}
+                        audiobooks={myAudiobooksByCategory[category]}
+                      />
+                    ))}
+                </>
               )}
-              {globalAudiobooks.length > 0 ? (
-                <CategoryRow title="Todos os Audiobooks" audiobooks={globalAudiobooks} />
+              
+              {/* Todos os Audiobooks por Categoria */}
+              {Object.keys(globalAudiobooksByCategory).length > 0 ? (
+                <>
+                  {Object.keys(globalAudiobooksByCategory)
+                    .sort()
+                    .map((category) => (
+                      <CategoryRow
+                        key={`global-${category}`}
+                        title={category}
+                        audiobooks={globalAudiobooksByCategory[category]}
+                      />
+                    ))}
+                </>
               ) : (
-                !myAudiobooks.length && !featuredAudiobooks.length && (
+                Object.keys(myAudiobooksByCategory).length === 0 && 
+                !featuredAudiobooks.length && (
                   <div className="container mx-auto px-4 md:px-8 py-20 text-center">
                     <p className="text-muted-foreground">Nenhum audiobook disponível ainda.</p>
                     <p className="text-sm text-muted-foreground mt-2">Faça upload de audiobooks para começar!</p>
