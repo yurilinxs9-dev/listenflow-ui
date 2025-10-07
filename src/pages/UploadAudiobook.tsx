@@ -48,6 +48,44 @@ export default function UploadAudiobook() {
     });
   };
 
+  const compressImage = async (imageBlob: Blob, maxWidth = 800, quality = 0.85): Promise<Blob> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+
+        // Redimensionar mantendo proporção
+        if (width > maxWidth) {
+          height = (height * maxWidth) / width;
+          width = maxWidth;
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        ctx?.drawImage(img, 0, 0, width, height);
+
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              resolve(blob);
+            } else {
+              reject(new Error('Falha ao comprimir imagem'));
+            }
+          },
+          'image/jpeg',
+          quality
+        );
+      };
+
+      img.onerror = () => reject(new Error('Falha ao carregar imagem'));
+      img.src = URL.createObjectURL(imageBlob);
+    });
+  };
+
   const processAudiobookMetadata = async (file: File, id: string) => {
     try {
       console.log(`[Upload] 📝 Processing metadata for: ${file.name}`);
@@ -229,12 +267,12 @@ export default function UploadAudiobook() {
     }
 
     console.log('[Submit] ✅ Todos os audiobooks são válidos');
-    console.log('[Submit] Iniciando uploads em paralelo...');
+    console.log('[Submit] Iniciando uploads em lotes de 3...');
     setIsUploading(true);
 
     try {
-      // Upload todos os audiobooks em paralelo para maior velocidade
-      const uploadPromises = audiobooks.map(async (audiobook, index) => {
+      // Função para processar upload de um audiobook
+      const uploadSingleAudiobook = async (audiobook: AudiobookForm, index: number) => {
         try {
           const fileSize = (audiobook.audioFile.size / 1024 / 1024).toFixed(2);
           console.log(`[Upload ${index + 1}/${audiobooks.length}] 🚀 Iniciando: ${audiobook.title} (${fileSize} MB)`);
@@ -305,14 +343,19 @@ export default function UploadAudiobook() {
           updateAudiobook(audiobook.id, 'uploadProgress', 60);
           
           if (audiobook.coverFile) {
-            console.log(`[Upload] Enviando capa customizada: ${audiobook.coverFile.name}`);
-            const coverPath = generateUniqueFilename(audiobook.coverFile.name, user.id);
+            console.log(`[Upload ${index + 1}] 📸 Comprimindo capa customizada...`);
+            const originalSize = (audiobook.coverFile.size / 1024).toFixed(2);
+            const compressedCover = await compressImage(audiobook.coverFile);
+            const compressedSize = (compressedCover.size / 1024).toFixed(2);
+            console.log(`[Upload ${index + 1}] ✅ Capa comprimida: ${originalSize}KB → ${compressedSize}KB`);
+            
+            const coverPath = generateUniqueFilename('cover.jpg', user.id);
             const { error: coverError } = await supabase.storage
               .from("audiobook-covers")
-              .upload(coverPath, audiobook.coverFile);
+              .upload(coverPath, compressedCover);
 
             if (coverError) {
-              console.error(`[Upload] Erro ao enviar capa customizada:`, coverError);
+              console.error(`[Upload ${index + 1}] ❌ Erro ao enviar capa:`, coverError);
               throw coverError;
             }
 
@@ -321,16 +364,15 @@ export default function UploadAudiobook() {
               .getPublicUrl(coverPath);
             
             coverUrl = publicUrl;
-            console.log(`[Upload] Capa customizada enviada: ${coverUrl}`);
+            console.log(`[Upload ${index + 1}] ✅ Capa enviada: ${coverUrl}`);
           } else if (audiobook.coverBlob) {
             try {
-              console.log(`[Upload] 🎨 Processing AI-generated cover`);
+              console.log(`[Upload ${index + 1}] 🎨 Processando capa gerada por IA...`);
               
               // Convert base64 or URL to blob
               let coverBlob: Blob;
               
               if (audiobook.coverBlob.startsWith('data:')) {
-                // Extract base64 data
                 const base64Data = audiobook.coverBlob.split(',')[1];
                 const byteCharacters = atob(base64Data);
                 const byteNumbers = new Array(byteCharacters.length);
@@ -345,14 +387,20 @@ export default function UploadAudiobook() {
                 coverBlob = await response.blob();
               }
               
+              console.log(`[Upload ${index + 1}] 📸 Comprimindo capa IA...`);
+              const originalSize = (coverBlob.size / 1024).toFixed(2);
+              const compressedCover = await compressImage(coverBlob);
+              const compressedSize = (compressedCover.size / 1024).toFixed(2);
+              console.log(`[Upload ${index + 1}] ✅ Capa IA comprimida: ${originalSize}KB → ${compressedSize}KB`);
+              
               const coverPath = generateUniqueFilename('cover.jpg', user.id);
               
               const { error: coverError } = await supabase.storage
                 .from("audiobook-covers")
-                .upload(coverPath, coverBlob);
+                .upload(coverPath, compressedCover);
 
               if (coverError) {
-                console.error(`[Upload] ❌ Storage upload error:`, coverError);
+                console.error(`[Upload ${index + 1}] ❌ Erro ao enviar capa:`, coverError);
                 throw coverError;
               }
 
@@ -361,9 +409,9 @@ export default function UploadAudiobook() {
                 .getPublicUrl(coverPath);
               
               coverUrl = publicUrl;
-              console.log(`[Upload] ✅ Cover uploaded successfully: ${coverUrl}`);
+              console.log(`[Upload ${index + 1}] ✅ Capa IA enviada: ${coverUrl}`);
             } catch (coverFetchError: any) {
-              console.error(`[Upload] ❌ Cover upload failed:`, coverFetchError);
+              console.error(`[Upload ${index + 1}] ❌ Falha no upload da capa:`, coverFetchError);
             }
           }
           
@@ -404,11 +452,22 @@ export default function UploadAudiobook() {
           updateAudiobook(audiobook.id, 'uploadProgress', 0);
           return { success: false, title: audiobook.title };
         }
-      });
+      };
 
-      // Aguardar todos os uploads terminarem
-      console.log('[Submit] ⏳ Aguardando conclusão de todos os uploads...');
-      const results = await Promise.all(uploadPromises);
+      // Processar em lotes de 3 para otimizar
+      const batchSize = 3;
+      const results = [];
+      
+      for (let i = 0; i < audiobooks.length; i += batchSize) {
+        const batch = audiobooks.slice(i, i + batchSize);
+        console.log(`[Submit] 📦 Processando lote ${Math.floor(i / batchSize) + 1}/${Math.ceil(audiobooks.length / batchSize)}`);
+        const batchResults = await Promise.all(
+          batch.map((audiobook, batchIndex) => 
+            uploadSingleAudiobook(audiobook, i + batchIndex)
+          )
+        );
+        results.push(...batchResults);
+      }
       const successCount = results.filter(r => r.success).length;
       const skippedCount = results.filter((r: any) => !r.success && r.skipped).length;
       const errorCount = results.filter((r: any) => !r.success && !r.skipped).length;
