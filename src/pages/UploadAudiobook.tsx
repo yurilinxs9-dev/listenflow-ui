@@ -178,7 +178,11 @@ export default function UploadAudiobook() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    console.log('[Submit] 🚀 Iniciando processo de upload');
+    console.log('[Submit] Total de audiobooks:', audiobooks.length);
+    
     if (!user) {
+      console.log('[Submit] ❌ Usuário não logado');
       toast({
         title: "Erro",
         description: "Você precisa estar logado para fazer upload",
@@ -188,7 +192,10 @@ export default function UploadAudiobook() {
       return;
     }
 
+    console.log('[Submit] ✅ Usuário logado:', user.id);
+
     if (audiobooks.length === 0) {
+      console.log('[Submit] ❌ Nenhum audiobook selecionado');
       toast({
         title: "Erro",
         description: "Selecione pelo menos um arquivo de áudio",
@@ -198,8 +205,21 @@ export default function UploadAudiobook() {
     }
 
     // Validar campos obrigatórios
-    const invalidAudiobooks = audiobooks.filter(ab => !ab.title || !ab.author || ab.durationSeconds === 0);
+    console.log('[Submit] Validando campos obrigatórios...');
+    const invalidAudiobooks = audiobooks.filter(ab => {
+      const isInvalid = !ab.title || !ab.author || ab.durationSeconds === 0;
+      if (isInvalid) {
+        console.log('[Submit] ❌ Audiobook inválido:', {
+          title: ab.title,
+          author: ab.author,
+          duration: ab.durationSeconds
+        });
+      }
+      return isInvalid;
+    });
+    
     if (invalidAudiobooks.length > 0) {
+      console.log('[Submit] ❌ Audiobooks inválidos encontrados:', invalidAudiobooks.length);
       toast({
         title: "Erro",
         description: "Preencha título, autor e duração para todos os audiobooks",
@@ -208,6 +228,8 @@ export default function UploadAudiobook() {
       return;
     }
 
+    console.log('[Submit] ✅ Todos os audiobooks são válidos');
+    console.log('[Submit] Iniciando uploads em paralelo...');
     setIsUploading(true);
 
     try {
