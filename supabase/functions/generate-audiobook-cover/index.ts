@@ -183,19 +183,10 @@ serve(async (req) => {
       coverUrl = await searchISBNdb(title, author);
     }
     
-    // If no real cover found, generate with AI
-    if (!coverUrl) {
-      console.log("🎨 [Cover Search] No real cover found, generating with AI...");
-      coverUrl = await generateCoverWithAI(title, author, genre || "Ficção");
-      
-      if (!coverUrl) {
-        console.error('❌ [Cover Search] AI generation also failed');
-        throw new Error('Failed to generate cover with AI');
-      }
-    }
-    
     // Download the image and convert to base64 to avoid CORS issues
     let imageBase64 = null;
+    let isLowQuality = false;
+    
     if (coverUrl) {
       try {
         console.log("⬇️ [Cover Download] Downloading cover image...");
@@ -206,18 +197,60 @@ serve(async (req) => {
           
           console.log(`📦 [Cover Download] Image size: ${imageBytes.byteLength} bytes`);
           
-          // Convert to base64
-          let binary = '';
-          for (let i = 0; i < imageBytes.byteLength; i++) {
-            binary += String.fromCharCode(imageBytes[i]);
+          // Check if image is too small (likely a thumbnail)
+          // Most book covers should be at least 50KB for decent quality
+          if (imageBytes.byteLength < 50000) {
+            console.log("⚠️ [Cover Download] Image too small (likely thumbnail), will generate with AI instead");
+            isLowQuality = true;
+            coverUrl = null; // Reset to trigger AI generation
+          } else {
+            // Convert to base64
+            let binary = '';
+            for (let i = 0; i < imageBytes.byteLength; i++) {
+              binary += String.fromCharCode(imageBytes[i]);
+            }
+            imageBase64 = `data:image/jpeg;base64,${btoa(binary)}`;
+            console.log("✅ [Cover Download] Cover converted to base64");
           }
-          imageBase64 = `data:image/jpeg;base64,${btoa(binary)}`;
-          console.log("✅ [Cover Download] Cover converted to base64");
         } else {
           console.error(`❌ [Cover Download] Failed to download image: ${imageResponse.status}`);
         }
       } catch (error) {
         console.error("❌ [Cover Download] Error downloading image:", error);
+      }
+    }
+    
+    // If cover was too small or not found, generate with AI
+    if (!coverUrl || isLowQuality) {
+      console.log("🎨 [Cover Generation] Generating high-quality cover with AI...");
+      const aiCoverUrl = await generateCoverWithAI(title, author, genre || "Ficção");
+      
+      if (aiCoverUrl) {
+        console.log("✅ [AI Generation] Successfully generated AI cover");
+        coverUrl = aiCoverUrl;
+        
+        // Download the AI-generated image
+        try {
+          const aiImageResponse = await fetch(aiCoverUrl);
+          if (aiImageResponse.ok) {
+            const aiImageBuffer = await aiImageResponse.arrayBuffer();
+            const aiImageBytes = new Uint8Array(aiImageBuffer);
+            
+            console.log(`📦 [AI Download] AI image size: ${aiImageBytes.byteLength} bytes`);
+            
+            // Convert to base64
+            let binary = '';
+            for (let i = 0; i < aiImageBytes.byteLength; i++) {
+              binary += String.fromCharCode(aiImageBytes[i]);
+            }
+            imageBase64 = `data:image/jpeg;base64,${btoa(binary)}`;
+            console.log("✅ [AI Download] AI cover converted to base64");
+          }
+        } catch (error) {
+          console.error("❌ [AI Download] Error downloading AI image:", error);
+        }
+      } else {
+        console.error("❌ [AI Generation] Failed to generate AI cover");
       }
     }
     
