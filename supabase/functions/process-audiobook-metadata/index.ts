@@ -68,12 +68,20 @@ Responda APENAS no seguinte formato JSON sem nenhum texto adicional:
     // Parse the JSON response from AI
     let metadata;
     try {
-      // Remove markdown code blocks if present
-      const jsonMatch = aiContent.match(/\{[\s\S]*\}/);
-      const jsonStr = jsonMatch ? jsonMatch[0] : aiContent;
+      // Remove markdown code blocks if present (```json ... ``` or ``` ... ```)
+      let cleanContent = aiContent.trim();
+      cleanContent = cleanContent.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '');
+      
+      // Extract JSON object
+      const jsonMatch = cleanContent.match(/\{[\s\S]*\}/);
+      const jsonStr = jsonMatch ? jsonMatch[0] : cleanContent;
+      
+      console.log("Parsing metadata from AI:", jsonStr.substring(0, 100));
       metadata = JSON.parse(jsonStr);
+      console.log("✅ Metadata parsed successfully:", metadata);
     } catch (e) {
-      console.error("Failed to parse AI response:", aiContent);
+      console.error("❌ Failed to parse AI response:", aiContent);
+      console.error("Parse error:", e);
       // Fallback to basic parsing
       metadata = {
         title: filename.replace(/\.[^/.]+$/, ""),
