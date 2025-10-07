@@ -245,18 +245,25 @@ export default function AdminAudiobooks() {
                     />
                   </div>
                   
-                  {(!book.cover_url || book.cover_url === '') && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleGenerateCover(book)}
-                      disabled={generatingCoverId === book.id}
-                      className="w-full"
-                    >
-                      <Sparkles className="mr-2 h-4 w-4" />
-                      {generatingCoverId === book.id ? 'Gerando...' : 'Gerar Capa com IA'}
-                    </Button>
-                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      console.log('[Admin] Generating cover for:', {
+                        id: book.id,
+                        title: book.title,
+                        author: book.author,
+                        genre: book.genre,
+                        currentCoverUrl: book.cover_url
+                      });
+                      handleGenerateCover(book);
+                    }}
+                    disabled={generatingCoverId === book.id}
+                    className="w-full"
+                  >
+                    <Sparkles className="mr-2 h-4 w-4" />
+                    {generatingCoverId === book.id ? 'Gerando Capa...' : book.cover_url ? 'Regerar Capa com IA' : 'Gerar Capa com IA'}
+                  </Button>
                   
                   <div className="flex gap-2">
                     <Button
