@@ -239,6 +239,13 @@ export default function UploadAudiobook() {
           const fileSize = (audiobook.audioFile.size / 1024 / 1024).toFixed(2);
           console.log(`[Upload ${index + 1}/${audiobooks.length}] 🚀 Iniciando: ${audiobook.title} (${fileSize} MB)`);
           
+          // Renovar sessão para garantir token válido
+          const { data: { session: currentSession }, error: sessionError } = await supabase.auth.getSession();
+          if (sessionError || !currentSession) {
+            throw new Error('Sessão expirada. Faça login novamente.');
+          }
+          console.log(`[Upload ${index + 1}] 🔐 Token renovado, válido até: ${new Date(currentSession.expires_at! * 1000).toLocaleTimeString()}`);
+          
           // Atualizar progresso: iniciando
           updateAudiobook(audiobook.id, 'uploadProgress', 10);
           console.log(`[Upload ${index + 1}] ⏳ Progresso: 10% (Preparando...)`);
