@@ -84,18 +84,30 @@ export const useCoverGeneration = () => {
       }
 
       // Get public URL
-      const { data: { publicUrl } } = supabase.storage
+      const publicUrlResult = supabase.storage
         .from('audiobook-covers')
         .getPublicUrl(coverPath);
 
-      console.log('[CoverGen] 📸 Public URL:', publicUrl);
-      console.log('[CoverGen] 💾 Updating audiobook:', audiobookId, 'with cover URL:', publicUrl);
+      console.log('[CoverGen] 📸 Public URL result:', publicUrlResult);
+      
+      const publicUrl = publicUrlResult.data.publicUrl;
+      console.log('[CoverGen] 📸 Extracted public URL:', publicUrl);
+      console.log('[CoverGen] 📸 Public URL type:', typeof publicUrl);
+      console.log('[CoverGen] 📸 Public URL length:', publicUrl?.length);
+
+      if (!publicUrl || publicUrl.length === 0) {
+        throw new Error('Failed to generate public URL');
+      }
+
+      console.log('[CoverGen] 💾 Updating audiobook:', audiobookId);
+      console.log('[CoverGen] 💾 With cover URL:', publicUrl);
 
       // Update audiobook record
       const { error: updateError, data: updateData } = await supabase
         .from('audiobooks')
         .update({ cover_url: publicUrl })
-        .eq('id', audiobookId);
+        .eq('id', audiobookId)
+        .select();
 
       console.log('[CoverGen] Database update result:', { updateData, updateError });
 
