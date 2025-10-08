@@ -46,7 +46,7 @@ const AudiobookDetails = () => {
   const [loading, setLoading] = useState(true);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [chapters, setChapters] = useState<any[]>([]);
-  const [playbackSpeed, setPlaybackSpeed] = useState(1);
+  const [playbackRate, setPlaybackRate] = useState(1);
   const [transcriptions, setTranscriptions] = useState<any[]>([]);
   const [currentSubtitle, setCurrentSubtitle] = useState<string>("");
   const [showSubtitles, setShowSubtitles] = useState(true);
@@ -95,60 +95,48 @@ const AudiobookDetails = () => {
     fetchAudiobookDetails();
   }, [id]);
 
-  // Fetch chapters
+  // Fetch chapters and transcriptions
   useEffect(() => {
-    const fetchChapters = async () => {
+    const fetchChaptersAndTranscriptions = async () => {
       if (!id) return;
       
       try {
         console.log(`[AudiobookDetails] Fetching chapters for audiobook: ${id}`);
-        const { data, error } = await supabase
+        const { data: chaptersData, error: chaptersError } = await supabase
           .from('chapters')
           .select('*')
           .eq('audiobook_id', id)
           .order('chapter_number', { ascending: true });
 
-        if (error) {
-          console.error('[AudiobookDetails] Error fetching chapters:', error);
+        if (chaptersError) {
+          console.error('[AudiobookDetails] Error fetching chapters:', chaptersError);
           setChapters([]);
         } else {
-          console.log('[AudiobookDetails] Chapters loaded:', data);
-          setChapters(data || []);
+          console.log('[AudiobookDetails] Chapters loaded:', chaptersData);
+          setChapters(chaptersData || []);
         }
-      } catch (error) {
-        console.error('[AudiobookDetails] Unexpected error fetching chapters:', error);
-      }
-    };
 
-    fetchChapters();
-  }, [id]);
-
-  // Fetch transcriptions for subtitles
-  useEffect(() => {
-    const fetchTranscriptions = async () => {
-      if (!id) return;
-      
-      try {
+        // Fetch transcriptions
         console.log(`[AudiobookDetails] Fetching transcriptions for audiobook: ${id}`);
-        const { data, error } = await supabase
+        const { data: transcriptionsData, error: transcriptionsError } = await supabase
           .from('audiobook_transcriptions')
           .select('*')
           .eq('audiobook_id', id)
           .order('start_time', { ascending: true });
 
-        if (error) {
-          console.error('[AudiobookDetails] Error fetching transcriptions:', error);
+        if (transcriptionsError) {
+          console.error('[AudiobookDetails] Error fetching transcriptions:', transcriptionsError);
           setTranscriptions([]);
         } else {
-          console.log('[AudiobookDetails] Transcriptions loaded:', data);
-          setTranscriptions(data || []);
+          console.log('[AudiobookDetails] Transcriptions loaded:', transcriptionsData);
+          setTranscriptions(transcriptionsData || []);
         }
       } catch (error) {
-        console.error('[AudiobookDetails] Unexpected error fetching transcriptions:', error);
+        console.error('[AudiobookDetails] Unexpected error:', error);
       }
     };
 
-    fetchTranscriptions();
+    fetchChaptersAndTranscriptions();
   }, [id]);
 
   // Audio element event handlers
@@ -187,21 +175,15 @@ const AudiobookDetails = () => {
       audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
       audio.removeEventListener('ended', handleEnded);
     };
-  }, [audioUrl]);
+  }, [audioUrl, transcriptions, showSubtitles]);
 
-  // Volume control
+  // Volume and playback rate control
   useEffect(() => {
     if (audioRef.current) {
       audioRef.current.volume = volume[0] / 100;
+      audioRef.current.playbackRate = playbackRate;
     }
-  }, [volume]);
-
-  // Playback speed control
-  useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.playbackRate = playbackSpeed;
-    }
-  }, [playbackSpeed]);
+  }, [volume, playbackRate]);
 
   const handlePlayPause = async () => {
     if (!audiobook) return;
@@ -627,8 +609,8 @@ const AudiobookDetails = () => {
                 <div className="hidden sm:flex items-center gap-2">
                   <Gauge className="w-4 h-4 text-muted-foreground" />
                   <select
-                    value={playbackSpeed}
-                    onChange={(e) => setPlaybackSpeed(parseFloat(e.target.value))}
+                    value={playbackRate}
+                    onChange={(e) => setPlaybackRate(parseFloat(e.target.value))}
                     className="bg-secondary text-foreground text-sm rounded px-2 py-1 border border-border focus:outline-none focus:ring-2 focus:ring-primary"
                   >
                     <option value="0.5">0.5x</option>
