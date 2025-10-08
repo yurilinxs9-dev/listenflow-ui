@@ -39,8 +39,8 @@ export const Header = () => {
     <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border">
       <div className="container mx-auto px-4 py-4 flex items-center justify-between">
         <div className="flex items-center gap-8">
-          <Link to="/" className="flex items-center">
-            <img src={logo} alt="RendaCast" className="h-20 w-auto" />
+          <Link to="/" className="flex items-center bg-transparent">
+            <img src={logo} alt="RendaCast" className="h-20 w-auto object-contain mix-blend-normal" style={{ background: 'transparent' }} />
           </Link>
           
           <nav className="hidden md:flex items-center gap-6">
