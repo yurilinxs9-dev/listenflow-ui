@@ -97,18 +97,17 @@ export const Header = () => {
                       <Shield className="w-4 h-4 mr-2" />
                       Painel Admin
                     </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => navigate('/my-audiobooks')}>
+                      <Music className="w-4 h-4 mr-2" />
+                      Meus Audiobooks
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => navigate('/upload')}>
+                      <Upload className="w-4 h-4 mr-2" />
+                      Enviar Audiobook
+                    </DropdownMenuItem>
                     <DropdownMenuSeparator />
                   </>
                 )}
-                <DropdownMenuItem onClick={() => navigate('/my-audiobooks')}>
-                  <Music className="w-4 h-4 mr-2" />
-                  Meus Audiobooks
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate('/upload')}>
-                  <Upload className="w-4 h-4 mr-2" />
-                  Enviar Audiobook
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => navigate('/favorites')}>
                   <Heart className="w-4 h-4 mr-2" />
                   Favoritos
@@ -167,7 +166,6 @@ export const Header = () => {
                     >
                       Minha Biblioteca
                     </Link>
-                    <div className="border-t border-border my-2" />
                     <Link 
                       to="/favorites" 
                       className="text-base hover:text-primary transition-colors py-2 flex items-center gap-2"
@@ -184,27 +182,17 @@ export const Header = () => {
                       <FolderOpen className="w-4 h-4" />
                       Minhas Coleções
                     </Link>
-                    <Link 
-                      to="/upload" 
-                      className="text-base hover:text-primary transition-colors py-2 flex items-center gap-2"
-                      onClick={() => setMobileMenuOpen(false)}
+                    <div className="border-t border-border my-2" />
+                    <button 
+                      onClick={() => {
+                        setMobileMenuOpen(false);
+                        signOut();
+                      }}
+                      className="text-base hover:text-primary transition-colors py-2 flex items-center gap-2 text-left"
                     >
-                      <Upload className="w-4 h-4" />
-                      Enviar Audiobook
-                    </Link>
-                    {isAdmin && (
-                      <>
-                        <div className="border-t border-border my-2" />
-                        <Link 
-                          to="/admin" 
-                          className="text-base hover:text-primary transition-colors py-2 flex items-center gap-2"
-                          onClick={() => setMobileMenuOpen(false)}
-                        >
-                          <Shield className="w-4 h-4" />
-                          Painel Admin
-                        </Link>
-                      </>
-                    )}
+                      <LogOut className="w-4 h-4" />
+                      Sair
+                    </button>
                   </>
                 )}
               </nav>
