@@ -60,6 +60,7 @@ export const CategoryRow = ({ title, audiobooks, topAudiobookIds }: CategoryRowP
         <div
           ref={scrollRef}
           className="flex gap-3 overflow-x-auto scrollbar-hide px-4 md:px-8 scroll-smooth"
+          style={{ WebkitOverflowScrolling: 'touch' }}
         >
           {audiobooks.map((audiobook) => {
             // Verifica se o audiobook está entre os top 5 globalmente mais lidos

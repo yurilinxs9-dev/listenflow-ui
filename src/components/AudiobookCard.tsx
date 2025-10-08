@@ -50,7 +50,8 @@ export const AudiobookCard = ({
 
   return (
     <div
-      className="group relative min-w-[140px] sm:min-w-[180px] cursor-pointer transition-all duration-300 ease-out hover:scale-105 hover:-translate-y-2"
+      className="group relative min-w-[140px] sm:min-w-[180px] cursor-pointer transition-all duration-300 ease-out hover:scale-[1.03] will-change-transform"
+      style={{ transform: 'translateZ(0)' }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       onClick={() => navigate(`/audiobook/${id}`)}
