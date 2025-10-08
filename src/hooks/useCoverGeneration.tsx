@@ -56,8 +56,17 @@ export const useCoverGeneration = () => {
       const imageBlob = new Blob([bytes], { type: 'image/png' });
 
       // Get user
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('User not authenticated');
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      
+      console.log('[CoverGen] 📤 User auth check:', {
+        hasUser: !!user,
+        userId: user?.id,
+        userError: userError
+      });
+      
+      if (!user) {
+        throw new Error('User not authenticated - please login and try again');
+      }
 
       console.log('[CoverGen] 📤 User authenticated:', user.id);
 
