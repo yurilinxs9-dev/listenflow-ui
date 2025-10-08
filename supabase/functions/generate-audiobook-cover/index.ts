@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -185,7 +186,9 @@ serve(async (req) => {
   }
 
   try {
-    const { title, author, genre } = await req.json();
+    const { title, author, genre, audiobookId, userId } = await req.json();
+    
+    console.log('[Edge] Received request:', { title, author, genre, audiobookId, userId });
     
     console.log(`🔍 [Cover Search] Starting for: "${title}" by ${author} (${genre})`);
     
@@ -287,10 +290,83 @@ serve(async (req) => {
       }
     }
     
-    console.log(`✅ [Cover Search] Returning ${imageBase64 ? 'base64' : 'URL'} image`);
+    // Upload to Supabase Storage from the edge function
+    if (!imageBase64 && !coverUrl) {
+      throw new Error('No cover image found or generated');
+    }
+    
+    console.log('[Edge] Uploading to Supabase Storage...');
+    
+    // Initialize Supabase client with service role for privileged access
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    
+    // Convert base64 to Blob
+    const base64Data = (imageBase64 || coverUrl).split(',')[1];
+    if (!base64Data) {
+      throw new Error('Invalid image data');
+    }
+    
+    // Decode base64 to binary
+    const binaryString = atob(base64Data);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    
+    // Create the storage path
+    const coverPath = `${userId}/${Date.now()}_${title.replace(/[^a-zA-Z0-9]/g, '_')}_cover.png`;
+    console.log('[Edge] Upload path:', coverPath);
+    console.log('[Edge] Blob size:', bytes.length, 'bytes');
+    
+    // Upload to storage
+    const { error: uploadError, data: uploadData } = await supabase.storage
+      .from('audiobook-covers')
+      .upload(coverPath, bytes, {
+        contentType: 'image/png',
+        cacheControl: '3600',
+        upsert: true
+      });
+    
+    if (uploadError) {
+      console.error('[Edge] Upload error:', uploadError);
+      throw uploadError;
+    }
+    
+    console.log('[Edge] Upload successful:', uploadData);
+    
+    // Get public URL
+    const { data: { publicUrl } } = supabase.storage
+      .from('audiobook-covers')
+      .getPublicUrl(coverPath);
+    
+    console.log('[Edge] Public URL:', publicUrl);
+    
+    // Update audiobook record if audiobookId is provided
+    if (audiobookId) {
+      console.log('[Edge] Updating audiobook record...');
+      const { error: updateError } = await supabase
+        .from('audiobooks')
+        .update({ cover_url: publicUrl })
+        .eq('id', audiobookId);
+      
+      if (updateError) {
+        console.error('[Edge] Database update error:', updateError);
+        // Don't throw - return the URL anyway
+      } else {
+        console.log('[Edge] Database updated successfully');
+      }
+    }
+    
+    console.log('[Edge] ✅ Cover generation complete');
     
     return new Response(
-      JSON.stringify({ imageUrl: imageBase64 || coverUrl }),
+      JSON.stringify({ 
+        success: true,
+        imageUrl: publicUrl,
+        message: 'Cover uploaded successfully'
+      }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
