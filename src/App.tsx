@@ -17,6 +17,7 @@ import MyAudiobooks from "./pages/MyAudiobooks";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminAudiobooks from "./pages/AdminAudiobooks";
 import AdminUsers from "./pages/AdminUsers";
+import UpdateCover from "./pages/UpdateCover";
 
 const queryClient = new QueryClient();
 
@@ -40,6 +41,7 @@ const App = () => (
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/admin/audiobooks" element={<AdminAudiobooks />} />
             <Route path="/admin/users" element={<AdminUsers />} />
+            <Route path="/update-cover" element={<UpdateCover />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
