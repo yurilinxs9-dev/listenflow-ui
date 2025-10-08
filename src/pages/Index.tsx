@@ -57,7 +57,7 @@ const Index = () => {
           // Função para agrupar audiobooks por categoria
           const groupByCategory = (books: any[]) => {
             return books.reduce((acc, book) => {
-              const category = book.category || "Geral";
+              const category = book.genre || "Geral";
               if (!acc[category]) {
                 acc[category] = [];
               }
