@@ -92,18 +92,18 @@ export const HeroCarousel = () => {
       <div className="absolute inset-0 bg-gradient-to-r from-background via-transparent to-transparent" />
 
       <div className="relative container mx-auto px-4 md:px-8 h-full flex items-end pb-20">
-        <div className="max-w-2xl space-y-6 animate-fade-in">
-          <h1 className="text-4xl md:text-6xl font-bold leading-tight text-glow">
+        <div className="max-w-2xl space-y-4 md:space-y-6 animate-fade-in">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold leading-tight text-glow line-clamp-3 break-words">
             {currentBook.title}
           </h1>
           
-          <div className="flex items-center gap-4 text-sm">
+          <div className="flex flex-wrap items-center gap-3 md:gap-4 text-xs sm:text-sm">
             <span className="text-accent font-semibold">Em Destaque</span>
             <span className="text-muted-foreground">{currentBook.duration}</span>
             <span className="text-muted-foreground">Por {currentBook.author}</span>
           </div>
 
-          <p className="text-base md:text-lg text-foreground/90 leading-relaxed">
+          <p className="text-sm sm:text-base md:text-lg text-foreground/90 leading-relaxed line-clamp-4">
             {currentBook.description}
           </p>
 
