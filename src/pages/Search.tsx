@@ -4,16 +4,58 @@ import { Input } from "@/components/ui/input";
 import { Search as SearchIcon } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { mockAudiobooks } from "@/data/mockAudiobooks";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+
+interface Audiobook {
+  id: string;
+  title: string;
+  author: string;
+  cover_url: string;
+  duration_seconds: number;
+  genre: string;
+}
 
 const Search = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState(searchParams.get("q") || "");
+  const [audiobooks, setAudiobooks] = useState<Audiobook[]>([]);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     setSearchQuery(searchParams.get("q") || "");
   }, [searchParams]);
+
+  useEffect(() => {
+    if (searchQuery.trim()) {
+      searchAudiobooks();
+    } else {
+      setAudiobooks([]);
+    }
+  }, [searchQuery]);
+
+  const searchAudiobooks = async () => {
+    setLoading(true);
+    try {
+      const searchTerm = `%${searchQuery.toLowerCase()}%`;
+      
+      const { data, error } = await supabase
+        .from('audiobooks')
+        .select('id, title, author, cover_url, duration_seconds, genre')
+        .or(`title.ilike.${searchTerm},author.ilike.${searchTerm},genre.ilike.${searchTerm},description.ilike.${searchTerm}`);
+
+      if (error) throw error;
+      
+      setAudiobooks(data || []);
+    } catch (error) {
+      console.error('Erro ao buscar audiobooks:', error);
+      toast.error('Erro ao buscar audiobooks');
+      setAudiobooks([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,18 +64,14 @@ const Search = () => {
     }
   };
 
-  const filteredAudiobooks = searchQuery.trim()
-    ? mockAudiobooks.filter(
-        (book) =>
-          book.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          book.author.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          book.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          book.description.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    : [];
+  const formatDuration = (seconds: number) => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    return `${hours}h ${minutes}m`;
+  };
 
   const categories = searchQuery.trim()
-    ? Array.from(new Set(filteredAudiobooks.map((book) => book.category)))
+    ? Array.from(new Set(audiobooks.map((book) => book.genre)))
     : [];
 
   return (
@@ -60,14 +98,19 @@ const Search = () => {
 
         {searchQuery.trim() && (
           <>
-            {filteredAudiobooks.length > 0 ? (
+            {loading ? (
+              <div className="text-center py-20">
+                <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary mx-auto"></div>
+                <p className="mt-4 text-muted-foreground">Buscando...</p>
+              </div>
+            ) : audiobooks.length > 0 ? (
               <div className="space-y-12">
                 <div>
                   <div className="mb-6">
                     <h2 className="text-2xl font-bold">
-                      {filteredAudiobooks.length} resultado
-                      {filteredAudiobooks.length !== 1 ? "s" : ""} encontrado
-                      {filteredAudiobooks.length !== 1 ? "s" : ""}
+                      {audiobooks.length} resultado
+                      {audiobooks.length !== 1 ? "s" : ""} encontrado
+                      {audiobooks.length !== 1 ? "s" : ""}
                     </h2>
                     <p className="text-muted-foreground">
                       para "{searchQuery}"
@@ -76,8 +119,8 @@ const Search = () => {
 
                   {categories.length > 1 ? (
                     categories.map((category) => {
-                      const booksInCategory = filteredAudiobooks.filter(
-                        (book) => book.category === category
+                      const booksInCategory = audiobooks.filter(
+                        (book) => book.genre === category
                       );
                       return (
                         <div key={category} className="mb-12">
@@ -91,8 +134,8 @@ const Search = () => {
                                 id={audiobook.id}
                                 title={audiobook.title}
                                 author={audiobook.author}
-                                duration={audiobook.duration}
-                                cover={audiobook.cover}
+                                duration={formatDuration(audiobook.duration_seconds)}
+                                cover={audiobook.cover_url}
                               />
                             ))}
                           </div>
@@ -101,14 +144,14 @@ const Search = () => {
                     })
                   ) : (
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
-                      {filteredAudiobooks.map((audiobook) => (
+                      {audiobooks.map((audiobook) => (
                         <AudiobookCard
                           key={audiobook.id}
                           id={audiobook.id}
                           title={audiobook.title}
                           author={audiobook.author}
-                          duration={audiobook.duration}
-                          cover={audiobook.cover}
+                          duration={formatDuration(audiobook.duration_seconds)}
+                          cover={audiobook.cover_url}
                         />
                       ))}
                     </div>

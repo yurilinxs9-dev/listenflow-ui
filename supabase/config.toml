@@ -11,3 +11,6 @@ verify_jwt = true
 
 [functions.generate-book-reviews]
 verify_jwt = false
+
+[functions.update-book-cover]
+verify_jwt = true
