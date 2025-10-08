@@ -16,6 +16,8 @@ import {
   BookOpen,
   FolderPlus,
   Sparkles,
+  Gauge,
+  Captions,
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { useFavorites } from "@/hooks/useFavorites";
@@ -44,6 +46,10 @@ const AudiobookDetails = () => {
   const [loading, setLoading] = useState(true);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [chapters, setChapters] = useState<any[]>([]);
+  const [playbackSpeed, setPlaybackSpeed] = useState(1);
+  const [transcriptions, setTranscriptions] = useState<any[]>([]);
+  const [currentSubtitle, setCurrentSubtitle] = useState<string>("");
+  const [showSubtitles, setShowSubtitles] = useState(true);
   const { toggleFavorite, isFavorite, isToggling } = useFavorites();
   const { isPremium: userIsPremium } = useUserSubscription();
   const { getPresignedUrl, isLoading: isGettingUrl } = useAudiobookAccess();
@@ -117,6 +123,34 @@ const AudiobookDetails = () => {
     fetchChapters();
   }, [id]);
 
+  // Fetch transcriptions for subtitles
+  useEffect(() => {
+    const fetchTranscriptions = async () => {
+      if (!id) return;
+      
+      try {
+        console.log(`[AudiobookDetails] Fetching transcriptions for audiobook: ${id}`);
+        const { data, error } = await supabase
+          .from('audiobook_transcriptions')
+          .select('*')
+          .eq('audiobook_id', id)
+          .order('start_time', { ascending: true });
+
+        if (error) {
+          console.error('[AudiobookDetails] Error fetching transcriptions:', error);
+          setTranscriptions([]);
+        } else {
+          console.log('[AudiobookDetails] Transcriptions loaded:', data);
+          setTranscriptions(data || []);
+        }
+      } catch (error) {
+        console.error('[AudiobookDetails] Unexpected error fetching transcriptions:', error);
+      }
+    };
+
+    fetchTranscriptions();
+  }, [id]);
+
   // Audio element event handlers
   useEffect(() => {
     const audio = audioRef.current;
@@ -126,6 +160,14 @@ const AudiobookDetails = () => {
       setCurrentTime(audio.currentTime);
       const progressPercent = (audio.currentTime / audio.duration) * 100;
       setProgress([progressPercent]);
+      
+      // Update subtitle
+      if (transcriptions.length > 0 && showSubtitles) {
+        const currentTranscription = transcriptions.find(
+          (sub) => audio.currentTime >= Number(sub.start_time) && audio.currentTime <= Number(sub.end_time)
+        );
+        setCurrentSubtitle(currentTranscription?.text || "");
+      }
     };
 
     const handleLoadedMetadata = () => {
@@ -153,6 +195,13 @@ const AudiobookDetails = () => {
       audioRef.current.volume = volume[0] / 100;
     }
   }, [volume]);
+
+  // Playback speed control
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.playbackRate = playbackSpeed;
+    }
+  }, [playbackSpeed]);
 
   const handlePlayPause = async () => {
     if (!audiobook) return;
@@ -502,6 +551,17 @@ const AudiobookDetails = () => {
         />
       )}
 
+      {/* Subtitle overlay */}
+      {currentSubtitle && showSubtitles && transcriptions.length > 0 && (
+        <div className="fixed bottom-36 left-1/2 transform -translate-x-1/2 z-40 max-w-4xl px-4">
+          <div className="bg-black/80 backdrop-blur-sm px-6 py-3 rounded-lg">
+            <p className="text-white text-center text-lg leading-relaxed">
+              {currentSubtitle}
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Fixed Player */}
       <div className="fixed bottom-0 left-0 right-0 bg-card border-t border-border backdrop-blur-xl shadow-2xl z-50">
         <div className="container mx-auto px-4 md:px-8 py-4">
@@ -519,19 +579,19 @@ const AudiobookDetails = () => {
               </span>
             </div>
 
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3 flex-1">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3 flex-1 min-w-0">
                 <img
                   src={audiobook.cover_url || "/placeholder.svg"}
                   alt={audiobook.title}
-                  className="w-12 h-12 rounded object-cover"
+                  className="w-12 h-12 rounded object-cover flex-shrink-0"
                   onError={(e) => {
                     e.currentTarget.src = "/placeholder.svg";
                   }}
                 />
-                <div className="hidden md:block">
-                  <p className="font-semibold text-sm">{audiobook.title}</p>
-                  <p className="text-xs text-muted-foreground">
+                <div className="hidden md:block min-w-0">
+                  <p className="font-semibold text-sm truncate">{audiobook.title}</p>
+                  <p className="text-xs text-muted-foreground truncate">
                     {audiobook.author}
                   </p>
                 </div>
@@ -562,15 +622,49 @@ const AudiobookDetails = () => {
                 </Button>
               </div>
 
-              <div className="hidden md:flex items-center gap-2 flex-1 justify-end">
-                <Volume2 className="w-5 h-5 text-muted-foreground" />
-                <Slider
-                  value={volume}
-                  onValueChange={setVolume}
-                  max={100}
-                  step={1}
-                  className="w-32"
-                />
+              <div className="flex items-center gap-3 flex-1 justify-end">
+                {/* Playback speed control */}
+                <div className="hidden sm:flex items-center gap-2">
+                  <Gauge className="w-4 h-4 text-muted-foreground" />
+                  <select
+                    value={playbackSpeed}
+                    onChange={(e) => setPlaybackSpeed(parseFloat(e.target.value))}
+                    className="bg-secondary text-foreground text-sm rounded px-2 py-1 border border-border focus:outline-none focus:ring-2 focus:ring-primary"
+                  >
+                    <option value="0.5">0.5x</option>
+                    <option value="0.75">0.75x</option>
+                    <option value="1">1x</option>
+                    <option value="1.25">1.25x</option>
+                    <option value="1.5">1.5x</option>
+                    <option value="1.75">1.75x</option>
+                    <option value="2">2x</option>
+                  </select>
+                </div>
+
+                {/* Subtitle toggle */}
+                {transcriptions.length > 0 && (
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => setShowSubtitles(!showSubtitles)}
+                    className="hidden sm:flex"
+                    title={showSubtitles ? "Ocultar legendas" : "Mostrar legendas"}
+                  >
+                    <Captions className={`w-5 h-5 ${showSubtitles ? "text-primary" : "text-muted-foreground"}`} />
+                  </Button>
+                )}
+
+                {/* Volume control */}
+                <div className="hidden md:flex items-center gap-2">
+                  <Volume2 className="w-5 h-5 text-muted-foreground" />
+                  <Slider
+                    value={volume}
+                    onValueChange={setVolume}
+                    max={100}
+                    step={1}
+                    className="w-24"
+                  />
+                </div>
               </div>
             </div>
           </div>

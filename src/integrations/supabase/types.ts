@@ -52,6 +52,44 @@ export type Database = {
           },
         ]
       }
+      audiobook_transcriptions: {
+        Row: {
+          audiobook_id: string
+          created_at: string | null
+          end_time: number
+          id: string
+          start_time: number
+          text: string
+          updated_at: string | null
+        }
+        Insert: {
+          audiobook_id: string
+          created_at?: string | null
+          end_time: number
+          id?: string
+          start_time: number
+          text: string
+          updated_at?: string | null
+        }
+        Update: {
+          audiobook_id?: string
+          created_at?: string | null
+          end_time?: number
+          id?: string
+          start_time?: number
+          text?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audiobook_transcriptions_audiobook_id_fkey"
+            columns: ["audiobook_id"]
+            isOneToOne: false
+            referencedRelation: "audiobooks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audiobooks: {
         Row: {
           audio_url: string
