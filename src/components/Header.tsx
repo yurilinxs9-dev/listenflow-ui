@@ -1,4 +1,4 @@
-import { Search, User, Menu, LogOut, Heart, FolderOpen, Upload, Music, Shield } from "lucide-react";
+import { Search, User, Menu, LogOut, Heart, FolderOpen, Upload, Music, Shield, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Link, useNavigate } from "react-router-dom";
@@ -12,12 +12,20 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 
 export const Header = () => {
   const { user, signOut } = useAuth();
   const { isAdmin } = useAdmin();
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,12 +48,12 @@ export const Header = () => {
             </Link>
             {user && (
               <>
-                <button className="text-sm hover:text-primary transition-colors">
+                <Link to="/search" className="text-sm hover:text-primary transition-colors">
                   Categorias
-                </button>
-                <button className="text-sm hover:text-primary transition-colors">
+                </Link>
+                <Link to="/my-audiobooks" className="text-sm hover:text-primary transition-colors">
                   Minha Biblioteca
-                </button>
+                </Link>
               </>
             )}
           </nav>
@@ -125,9 +133,83 @@ export const Header = () => {
             </Button>
           )}
           
-          <Button size="icon" variant="ghost" className="md:hidden">
-            <Menu className="w-5 h-5" />
-          </Button>
+          <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+            <SheetTrigger asChild>
+              <Button size="icon" variant="ghost" className="md:hidden">
+                <Menu className="w-5 h-5" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-[280px] z-50">
+              <SheetHeader>
+                <SheetTitle>Menu</SheetTitle>
+              </SheetHeader>
+              <nav className="flex flex-col gap-4 mt-6">
+                <Link 
+                  to="/" 
+                  className="text-base hover:text-primary transition-colors py-2"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Início
+                </Link>
+                {user && (
+                  <>
+                    <Link 
+                      to="/search" 
+                      className="text-base hover:text-primary transition-colors py-2"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      Categorias
+                    </Link>
+                    <Link 
+                      to="/my-audiobooks" 
+                      className="text-base hover:text-primary transition-colors py-2"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      Minha Biblioteca
+                    </Link>
+                    <div className="border-t border-border my-2" />
+                    <Link 
+                      to="/favorites" 
+                      className="text-base hover:text-primary transition-colors py-2 flex items-center gap-2"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      <Heart className="w-4 h-4" />
+                      Favoritos
+                    </Link>
+                    <Link 
+                      to="/lists" 
+                      className="text-base hover:text-primary transition-colors py-2 flex items-center gap-2"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      <FolderOpen className="w-4 h-4" />
+                      Minhas Coleções
+                    </Link>
+                    <Link 
+                      to="/upload" 
+                      className="text-base hover:text-primary transition-colors py-2 flex items-center gap-2"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      <Upload className="w-4 h-4" />
+                      Enviar Audiobook
+                    </Link>
+                    {isAdmin && (
+                      <>
+                        <div className="border-t border-border my-2" />
+                        <Link 
+                          to="/admin" 
+                          className="text-base hover:text-primary transition-colors py-2 flex items-center gap-2"
+                          onClick={() => setMobileMenuOpen(false)}
+                        >
+                          <Shield className="w-4 h-4" />
+                          Painel Admin
+                        </Link>
+                      </>
+                    )}
+                  </>
+                )}
+              </nav>
+            </SheetContent>
+          </Sheet>
         </div>
       </div>
     </header>

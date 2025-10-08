@@ -50,7 +50,7 @@ export const AudiobookCard = ({
 
   return (
     <div
-      className="group relative min-w-[180px] cursor-pointer transition-all duration-300 ease-out hover:scale-105 hover:-translate-y-2"
+      className="group relative min-w-[140px] sm:min-w-[180px] cursor-pointer transition-all duration-300 ease-out hover:scale-105 hover:-translate-y-2"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       onClick={() => navigate(`/audiobook/${id}`)}
@@ -133,12 +133,12 @@ export const AudiobookCard = ({
         </div>
       </div>
 
-      <div className="mt-3 space-y-1 px-1">
-        <h3 className="font-semibold text-sm line-clamp-1 group-hover:text-primary transition-colors">
+      <div className="mt-3 space-y-1 px-1 max-w-full overflow-hidden">
+        <h3 className="font-semibold text-xs sm:text-sm line-clamp-2 group-hover:text-primary transition-colors leading-tight">
           {title}
         </h3>
         <p className="text-xs text-muted-foreground line-clamp-1">{author}</p>
-        <p className="text-xs text-muted-foreground">{duration}</p>
+        <p className="text-[10px] sm:text-xs text-muted-foreground">{duration}</p>
       </div>
     </div>
   );
