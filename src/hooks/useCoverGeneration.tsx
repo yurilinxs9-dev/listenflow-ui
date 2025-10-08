@@ -38,28 +38,22 @@ export const useCoverGeneration = () => {
 
       console.log('[CoverGen] ✅ Cover URL received, uploading to storage...');
 
-      let imageBlob: Blob;
-
-      // Check if the image is already in base64 format
-      if (coverResult.imageUrl.startsWith('data:')) {
-        console.log('[CoverGen] Image is in base64 format, converting to blob...');
-        // Convert base64 to blob
-        const base64Data = coverResult.imageUrl.split(',')[1];
-        const byteCharacters = atob(base64Data);
-        const byteNumbers = new Array(byteCharacters.length);
-        for (let i = 0; i < byteCharacters.length; i++) {
-          byteNumbers[i] = byteCharacters.charCodeAt(i);
-        }
-        const byteArray = new Uint8Array(byteNumbers);
-        imageBlob = new Blob([byteArray], { type: 'image/jpeg' });
-      } else {
-        console.log('[CoverGen] Downloading image from URL...');
-        // Download the image
-        imageBlob = await fetch(coverResult.imageUrl).then(r => {
-          if (!r.ok) throw new Error(`Failed to download image: ${r.status}`);
-          return r.blob();
-        });
+      // Convert base64 to blob
+      console.log('[CoverGen] Converting image to blob...');
+      const base64Data = coverResult.imageUrl.split(',')[1];
+      
+      if (!base64Data) {
+        throw new Error('Invalid base64 data received from cover generation');
       }
+      
+      // More efficient base64 to blob conversion
+      const binaryString = atob(base64Data);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+      
+      const imageBlob = new Blob([bytes], { type: 'image/png' });
 
       // Get user
       const { data: { user } } = await supabase.auth.getUser();
@@ -74,7 +68,11 @@ export const useCoverGeneration = () => {
       
       const { error: uploadError, data: uploadData } = await supabase.storage
         .from('audiobook-covers')
-        .upload(coverPath, imageBlob);
+        .upload(coverPath, imageBlob, {
+          contentType: 'image/png',
+          cacheControl: '3600',
+          upsert: true
+        });
 
       console.log('[CoverGen] Upload result:', { uploadData, uploadError });
 
