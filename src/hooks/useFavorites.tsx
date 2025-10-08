@@ -1,65 +1,100 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { toast } from './use-toast';
 
+// Cache global para evitar múltiplas requisições
+let favoritesCache: string[] = [];
+let cacheTimestamp = 0;
+let fetchPromise: Promise<string[]> | null = null;
+const CACHE_DURATION = 5000; // 5 segundos
+
 export const useFavorites = () => {
   const { user } = useAuth();
-  const [favorites, setFavorites] = useState<string[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [favorites, setFavorites] = useState<string[]>(favoritesCache);
+  const [loading, setLoading] = useState(false);
   const [isToggling, setIsToggling] = useState<Record<string, boolean>>({});
+  const mountedRef = useRef(true);
 
-  const fetchFavorites = async () => {
-    if (!user) return;
+  const fetchFavorites = async (): Promise<string[]> => {
+    if (!user) return [];
 
-    try {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('favorites')
-        .select('audiobook_id')
-        .eq('user_id', user.id);
+    // Verifica se já existe uma requisição em andamento
+    if (fetchPromise) {
+      return fetchPromise;
+    }
 
-      if (error) {
+    // Verifica se o cache ainda é válido
+    const now = Date.now();
+    if (cacheTimestamp && now - cacheTimestamp < CACHE_DURATION && favoritesCache.length >= 0) {
+      return favoritesCache;
+    }
+
+    // Cria uma nova promise de fetch
+    fetchPromise = (async () => {
+      try {
+        const { data, error } = await supabase
+          .from('favorites')
+          .select('audiobook_id')
+          .eq('user_id', user.id);
+
+        if (error) {
+          console.error('Error fetching favorites:', error);
+          throw error;
+        }
+
+        const newFavorites = data?.map(f => f.audiobook_id) || [];
+        favoritesCache = newFavorites;
+        cacheTimestamp = Date.now();
+        return newFavorites;
+      } catch (error) {
         console.error('Error fetching favorites:', error);
         throw error;
+      } finally {
+        fetchPromise = null;
       }
+    })();
 
-      setFavorites(data?.map(f => f.audiobook_id) || []);
-    } catch (error) {
-      console.error('Error fetching favorites:', error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível carregar os favoritos.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
+    return fetchPromise;
   };
 
   useEffect(() => {
-    let mounted = true;
-    let timeoutId: NodeJS.Timeout;
+    mountedRef.current = true;
     
     const loadFavorites = async () => {
-      if (user?.id && mounted) {
-        // Adiciona um pequeno delay para evitar múltiplas chamadas
-        timeoutId = setTimeout(async () => {
-          if (mounted) {
-            await fetchFavorites();
-          }
-        }, 100);
-      } else if (!user && mounted) {
-        setFavorites([]);
-        setLoading(false);
+      if (!user?.id) {
+        if (mountedRef.current) {
+          setFavorites([]);
+          setLoading(false);
+        }
+        return;
+      }
+
+      try {
+        setLoading(true);
+        const result = await fetchFavorites();
+        if (mountedRef.current) {
+          setFavorites(result);
+        }
+      } catch (error) {
+        if (mountedRef.current) {
+          toast({
+            title: "Erro",
+            description: "Não foi possível carregar os favoritos.",
+            variant: "destructive",
+          });
+        }
+      } finally {
+        if (mountedRef.current) {
+          setLoading(false);
+        }
       }
     };
 
     loadFavorites();
 
     return () => {
-      mounted = false;
-      if (timeoutId) clearTimeout(timeoutId);
+      mountedRef.current = false;
     };
   }, [user?.id]);
 
@@ -93,7 +128,10 @@ export const useFavorites = () => {
 
         if (error) throw error;
 
-        setFavorites(prev => prev.filter(id => id !== audiobookId));
+        const newFavorites = favorites.filter(id => id !== audiobookId);
+        setFavorites(newFavorites);
+        favoritesCache = newFavorites;
+        cacheTimestamp = Date.now();
         toast({
           title: "Removido dos favoritos",
           description: "Audiobook removido da sua lista de favoritos.",
@@ -146,7 +184,10 @@ export const useFavorites = () => {
           throw error;
         }
 
-        setFavorites(prev => [...prev, audiobookId]);
+        const newFavorites = [...favorites, audiobookId];
+        setFavorites(newFavorites);
+        favoritesCache = newFavorites;
+        cacheTimestamp = Date.now();
         toast({
           title: "Adicionado aos favoritos",
           description: "Audiobook adicionado à sua lista de favoritos.",
