@@ -118,6 +118,14 @@ export const useCoverGeneration = () => {
         console.error('[CoverGen] ⚠️ URL not accessible:', testError);
       }
 
+      // Verify the URL is accessible before saving
+      try {
+        const testResponse = await fetch(publicUrl);
+        console.log('[CoverGen] 🔍 URL accessibility test:', testResponse.ok, testResponse.status);
+      } catch (testError) {
+        console.error('[CoverGen] ⚠️ URL not accessible:', testError);
+      }
+
       // Update audiobook record
       const { error: updateError, data: updateData } = await supabase
         .from('audiobooks')
