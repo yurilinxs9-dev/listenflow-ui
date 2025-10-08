@@ -16,10 +16,10 @@ interface Profile {
   avatar_url: string | null;
   created_at: string;
   status: string;
+  email: string | null;
 }
 
 interface UserWithRole extends Profile {
-  email?: string;
   isAdmin: boolean;
 }
 
