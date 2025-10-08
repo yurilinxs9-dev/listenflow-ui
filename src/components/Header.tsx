@@ -5,6 +5,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useState } from "react";
+import logo from "@/assets/rendacast-logo.png";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -38,8 +39,8 @@ export const Header = () => {
     <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border">
       <div className="container mx-auto px-4 py-4 flex items-center justify-between">
         <div className="flex items-center gap-8">
-          <Link to="/" className="text-2xl font-bold gradient-hero bg-clip-text text-transparent">
-            ListenFlow
+          <Link to="/" className="flex items-center">
+            <img src={logo} alt="RendaCast" className="h-10 w-auto" />
           </Link>
           
           <nav className="hidden md:flex items-center gap-6">
