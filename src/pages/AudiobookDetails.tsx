@@ -327,6 +327,7 @@ const AudiobookDetails = () => {
                 <img
                   src={audiobook.cover_url || "/placeholder.svg"}
                   alt={audiobook.title}
+                  loading="lazy"
                   className="w-full h-full object-cover"
                   onError={(e) => {
                     e.currentTarget.src = "/placeholder.svg";
@@ -483,12 +484,13 @@ const AudiobookDetails = () => {
         </div>
       </main>
 
-      {/* Audio element */}
+      {/* Audio element with progressive streaming */}
       {audioUrl && (
         <audio
           ref={audioRef}
           src={audioUrl}
           preload="metadata"
+          crossOrigin="anonymous"
         />
       )}
 
