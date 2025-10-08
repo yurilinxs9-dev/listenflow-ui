@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, Trash2, Music, Sparkles } from "lucide-react";
+import { Trash2, Music, Sparkles } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCoverGeneration } from "@/hooks/useCoverGeneration";
@@ -128,12 +128,8 @@ export default function MyAudiobooks() {
     <div className="min-h-screen bg-background">
       <Header />
       <main className="container mx-auto px-4 py-8 pt-24">
-        <div className="flex justify-between items-center mb-8">
+        <div className="mb-8">
           <h1 className="text-4xl font-bold">Meus Audiobooks</h1>
-          <Button onClick={() => navigate("/upload")}>
-            <Plus className="mr-2 h-4 w-4" />
-            Adicionar Audiobook
-          </Button>
         </div>
 
         {isLoading ? (
@@ -153,13 +149,9 @@ export default function MyAudiobooks() {
             <CardContent>
               <Music className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
               <CardTitle className="mb-2">Nenhum audiobook ainda</CardTitle>
-              <CardDescription className="mb-4">
-                Comece a construir sua biblioteca enviando seu primeiro audiobook
+              <CardDescription>
+                Sua biblioteca está vazia. Aguarde novos audiobooks serem adicionados.
               </CardDescription>
-              <Button onClick={() => navigate("/upload")}>
-                <Plus className="mr-2 h-4 w-4" />
-                Enviar Audiobook
-              </Button>
             </CardContent>
           </Card>
         ) : (

@@ -201,7 +201,7 @@ export default function AdminUsers() {
                            'Rejeitado'}
                         </Badge>
                        </div>
-                       <CardDescription className="space-y-1">
+                       <div className="space-y-1 text-sm text-muted-foreground">
                          {user.email && (
                            <div className="flex items-center gap-2">
                              <Mail className="h-4 w-4" />
@@ -212,7 +212,7 @@ export default function AdminUsers() {
                            <Calendar className="h-4 w-4" />
                            <span>Cadastrado em {formatDate(user.created_at)}</span>
                          </div>
-                       </CardDescription>
+                       </div>
                        <div className="flex gap-2 pt-2 flex-wrap">
                          {user.status === 'pending' && (
                            <>
