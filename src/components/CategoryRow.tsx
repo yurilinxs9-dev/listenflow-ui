@@ -16,9 +16,10 @@ interface Audiobook {
 interface CategoryRowProps {
   title: string;
   audiobooks: Audiobook[];
+  topAudiobookIds?: Set<string>;
 }
 
-export const CategoryRow = ({ title, audiobooks }: CategoryRowProps) => {
+export const CategoryRow = ({ title, audiobooks, topAudiobookIds }: CategoryRowProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [showLeftArrow, setShowLeftArrow] = useState(false);
   const [showRightArrow, setShowRightArrow] = useState(true);
@@ -60,10 +61,9 @@ export const CategoryRow = ({ title, audiobooks }: CategoryRowProps) => {
           ref={scrollRef}
           className="flex gap-3 overflow-x-auto scrollbar-hide px-4 md:px-8 scroll-smooth"
         >
-          {audiobooks.map((audiobook, index) => {
-            // Top 5 audiobooks based on view count are marked as top-rated
-            const sortedByViews = [...audiobooks].sort((a, b) => (b.viewCount || 0) - (a.viewCount || 0));
-            const isTopRated = sortedByViews.slice(0, 5).some(top => top.id === audiobook.id);
+          {audiobooks.map((audiobook) => {
+            // Verifica se o audiobook está entre os top 5 globalmente mais lidos
+            const isTopRated = topAudiobookIds?.has(audiobook.id) || false;
             
             return (
               <AudiobookCard

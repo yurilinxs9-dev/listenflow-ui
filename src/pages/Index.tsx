@@ -8,12 +8,29 @@ const Index = () => {
   const [myAudiobooksByCategory, setMyAudiobooksByCategory] = useState<Record<string, any[]>>({});
   const [globalAudiobooksByCategory, setGlobalAudiobooksByCategory] = useState<Record<string, any[]>>({});
   const [featuredAudiobooks, setFeaturedAudiobooks] = useState<any[]>([]);
+  const [topAudiobookIds, setTopAudiobookIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchAudiobooks = async () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
+        
+        // Buscar os top 5 audiobooks globalmente mais lidos
+        const { data: topData, error: topError } = await supabase
+          .from('audiobooks')
+          .select('id')
+          .not('audio_url', 'is', null)
+          .order('view_count', { ascending: false })
+          .limit(5);
+
+        if (topError) {
+          console.error('[Index] Error fetching top audiobooks:', topError);
+        } else if (topData) {
+          const topIds = new Set(topData.map(book => book.id));
+          setTopAudiobookIds(topIds);
+          console.log('[Index] Top 5 audiobook IDs:', Array.from(topIds));
+        }
         
         const { data, error } = await supabase
           .from('audiobooks')
@@ -110,7 +127,11 @@ const Index = () => {
             <>
               {/* Audiobooks em Destaque */}
               {featuredAudiobooks.length > 0 && (
-                <CategoryRow title="⭐ Em Destaque" audiobooks={featuredAudiobooks} />
+                <CategoryRow 
+                  title="⭐ Em Destaque" 
+                  audiobooks={featuredAudiobooks}
+                  topAudiobookIds={topAudiobookIds}
+                />
               )}
               
               {/* Meus Audiobooks por Categoria */}
@@ -123,6 +144,7 @@ const Index = () => {
                         key={`my-${category}`}
                         title={`Meus Audiobooks - ${category}`}
                         audiobooks={myAudiobooksByCategory[category]}
+                        topAudiobookIds={topAudiobookIds}
                       />
                     ))}
                 </>
@@ -138,6 +160,7 @@ const Index = () => {
                         key={`global-${category}`}
                         title={category}
                         audiobooks={globalAudiobooksByCategory[category]}
+                        topAudiobookIds={topAudiobookIds}
                       />
                     ))}
                 </>
