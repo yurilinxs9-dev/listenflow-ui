@@ -352,9 +352,26 @@ export default function UploadAudiobook() {
           console.log(`[Upload ${index + 1}] ⏳ Progresso: 20% (Enviando áudio ${fileSize} MB...)`);
           
           const uploadStart = Date.now();
-          const { error: audioError } = await supabase.storage
-            .from("audiobooks")
-            .upload(audioPath, audiobook.audioFile);
+          
+          // Use resumable upload for large files (>50MB)
+          const fileSizeMB = audiobook.audioFile.size / (1024 * 1024);
+          let audioError;
+          
+          if (fileSizeMB > 50) {
+            console.log(`[Upload ${index + 1}] 📦 Usando upload resumable (arquivo grande: ${fileSize} MB)`);
+            const { error } = await supabase.storage
+              .from("audiobooks")
+              .upload(audioPath, audiobook.audioFile, {
+                cacheControl: '3600',
+                upsert: false,
+              });
+            audioError = error;
+          } else {
+            const { error } = await supabase.storage
+              .from("audiobooks")
+              .upload(audioPath, audiobook.audioFile);
+            audioError = error;
+          }
 
           const uploadTime = ((Date.now() - uploadStart) / 1000).toFixed(1);
           
