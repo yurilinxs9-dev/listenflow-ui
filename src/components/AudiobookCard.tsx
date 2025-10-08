@@ -1,5 +1,6 @@
-import { Play, Plus, Info, Heart, Lock } from "lucide-react";
+import { Play, Plus, Info, Heart, Lock, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useFavorites } from "@/hooks/useFavorites";
@@ -12,6 +13,8 @@ interface AudiobookCardProps {
   duration: string;
   cover: string;
   progress?: number;
+  viewCount?: number;
+  isTopRated?: boolean;
 }
 
 export const AudiobookCard = ({
@@ -21,6 +24,8 @@ export const AudiobookCard = ({
   duration,
   cover,
   progress = 0,
+  viewCount,
+  isTopRated,
 }: AudiobookCardProps) => {
   const [isHovered, setIsHovered] = useState(false);
   const [imageError, setImageError] = useState(false);
@@ -57,6 +62,16 @@ export const AudiobookCard = ({
             : '0 4px 6px -1px hsla(0, 0%, 0%, 0.2), 0 2px 4px -1px hsla(0, 0%, 0%, 0.1)'
         }}
       >
+        {isTopRated && (
+          <Badge 
+            className="absolute top-2 left-2 z-10 bg-accent text-accent-foreground border-0 shadow-lg"
+            variant="default"
+          >
+            <TrendingUp className="w-3 h-3 mr-1" />
+            Mais Lido
+          </Badge>
+        )}
+        
         <img
           src={imageError ? "/placeholder.svg" : cover}
           alt={title}

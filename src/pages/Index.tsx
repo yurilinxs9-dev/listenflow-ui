@@ -35,7 +35,8 @@ const Index = () => {
             category: book.genre || "Geral",
             description: book.description || "Audiobook disponível para reprodução.",
             userId: book.user_id,
-            isGlobal: book.is_global
+            isGlobal: book.is_global,
+            viewCount: book.view_count || 0
           }));
           
           // Separar audiobooks destacados

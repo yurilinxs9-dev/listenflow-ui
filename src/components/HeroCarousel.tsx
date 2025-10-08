@@ -2,46 +2,82 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Play, Plus, Info } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 import heroImage from "@/assets/hero-audiobook.jpg";
 
-const featuredBooks = [
-  {
-    id: "1",
-    title: "O Mistério da Noite Escura",
-    author: "Ana Silva",
-    description:
-      "Um thriller psicológico envolvente que irá mantê-lo acordado até as primeiras horas da manhã. Uma história de suspense e mistério.",
-    duration: "8h 45min",
-  },
-  {
-    id: "2",
-    title: "Reinos Perdidos",
-    author: "Carlos Mendes",
-    description:
-      "Uma épica jornada fantástica através de terras místicas e batalhas lendárias. Aventura e magia se unem nesta saga inesquecível.",
-    duration: "12h 30min",
-  },
-  {
-    id: "3",
-    title: "Estrelas Distantes",
-    author: "Maria Costa",
-    description:
-      "Ficção científica de tirar o fôlego que explora os limites do universo conhecido. Uma visão única sobre o futuro da humanidade.",
-    duration: "10h 15min",
-  },
-];
+interface FeaturedBook {
+  id: string;
+  title: string;
+  author: string;
+  description: string;
+  duration: string;
+  cover_url?: string;
+  view_count: number;
+}
 
 export const HeroCarousel = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [featuredBooks, setFeaturedBooks] = useState<FeaturedBook[]>([]);
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentIndex((prev) => (prev + 1) % featuredBooks.length);
-    }, 7000);
+    const fetchTopAudiobooks = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('audiobooks')
+          .select('*')
+          .not('audio_url', 'is', null)
+          .order('view_count', { ascending: false })
+          .limit(5);
 
-    return () => clearInterval(interval);
+        if (error) {
+          console.error('[HeroCarousel] Error fetching top audiobooks:', error);
+        } else if (data && data.length > 0) {
+          const transformed = data.map((book: any) => ({
+            id: book.id,
+            title: book.title,
+            author: book.author,
+            description: book.description || "Audiobook disponível para reprodução.",
+            duration: formatDuration(book.duration_seconds),
+            cover_url: book.cover_url,
+            view_count: book.view_count || 0
+          }));
+          setFeaturedBooks(transformed);
+        }
+      } catch (error) {
+        console.error('[HeroCarousel] Unexpected error:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTopAudiobooks();
   }, []);
+
+  const formatDuration = (seconds: number): string => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    return `${hours}h ${minutes}min`;
+  };
+
+  useEffect(() => {
+    if (featuredBooks.length > 0) {
+      const interval = setInterval(() => {
+        setCurrentIndex((prev) => (prev + 1) % featuredBooks.length);
+      }, 7000);
+
+      return () => clearInterval(interval);
+    }
+  }, [featuredBooks.length]);
+
+  if (loading || featuredBooks.length === 0) {
+    return (
+      <div className="relative h-[70vh] min-h-[500px] overflow-hidden bg-background flex items-center justify-center">
+        <p className="text-muted-foreground">Carregando destaques...</p>
+      </div>
+    );
+  }
 
   const currentBook = featuredBooks[currentIndex];
 

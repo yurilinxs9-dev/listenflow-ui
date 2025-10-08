@@ -49,10 +49,19 @@ const AudiobookDetails = () => {
   const { user } = useAuth();
 
   useEffect(() => {
-    const fetchAudiobook = async () => {
+    const fetchAudiobookDetails = async () => {
       if (!id) return;
-      
+
       try {
+        // Increment view count
+        console.log(`[AudiobookDetails] Incrementing view count for: ${id}`);
+        const { error: incrementError } = await supabase
+          .rpc('increment_audiobook_views', { audiobook_id: id });
+        
+        if (incrementError) {
+          console.error('[AudiobookDetails] Error incrementing views:', incrementError);
+        }
+
         console.log(`[AudiobookDetails] Fetching audiobook: ${id}`);
         const { data, error } = await supabase
           .from('audiobooks')
@@ -74,7 +83,7 @@ const AudiobookDetails = () => {
       }
     };
 
-    fetchAudiobook();
+    fetchAudiobookDetails();
   }, [id]);
 
   // Fetch chapters
