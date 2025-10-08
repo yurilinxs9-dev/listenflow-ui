@@ -101,6 +101,15 @@ export const useCoverGeneration = () => {
 
       console.log('[CoverGen] 💾 Updating audiobook:', audiobookId);
       console.log('[CoverGen] 💾 With cover URL:', publicUrl);
+      console.log('[CoverGen] 💾 publicUrl is valid?', !!publicUrl, publicUrl?.length);
+
+      // Verify the URL is accessible before saving
+      try {
+        const testResponse = await fetch(publicUrl);
+        console.log('[CoverGen] 🔍 URL accessibility test:', testResponse.ok, testResponse.status);
+      } catch (testError) {
+        console.error('[CoverGen] ⚠️ URL not accessible:', testError);
+      }
 
       // Update audiobook record
       const { error: updateError, data: updateData } = await supabase
@@ -110,6 +119,10 @@ export const useCoverGeneration = () => {
         .select();
 
       console.log('[CoverGen] Database update result:', { updateData, updateError });
+      
+      if (updateData && updateData.length > 0) {
+        console.log('[CoverGen] ✅ Updated audiobook cover_url:', updateData[0].cover_url);
+      }
 
       if (updateError) {
         console.error('[CoverGen] ❌ Database update error:', updateError);
