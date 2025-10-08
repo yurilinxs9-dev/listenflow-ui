@@ -48,7 +48,7 @@ export const Header = () => {
             </Link>
             {user && (
               <>
-                <Link to="/search" className="text-sm hover:text-primary transition-colors">
+                <Link to="/categories" className="text-sm hover:text-primary transition-colors">
                   Categorias
                 </Link>
                 <Link to="/my-audiobooks" className="text-sm hover:text-primary transition-colors">
@@ -153,7 +153,7 @@ export const Header = () => {
                 {user && (
                   <>
                     <Link 
-                      to="/search" 
+                      to="/categories" 
                       className="text-base hover:text-primary transition-colors py-2"
                       onClick={() => setMobileMenuOpen(false)}
                     >

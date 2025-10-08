@@ -18,6 +18,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import AdminAudiobooks from "./pages/AdminAudiobooks";
 import AdminUsers from "./pages/AdminUsers";
 import UpdateCover from "./pages/UpdateCover";
+import Categories from "./pages/Categories";
 
 const queryClient = new QueryClient();
 
@@ -36,6 +37,7 @@ const App = () => (
             <Route path="/lists" element={<MyLists />} />
             <Route path="/lists/:listId" element={<ListDetails />} />
             <Route path="/search" element={<Search />} />
+            <Route path="/categories" element={<Categories />} />
             <Route path="/upload" element={<UploadAudiobook />} />
             <Route path="/my-audiobooks" element={<MyAudiobooks />} />
             <Route path="/admin" element={<AdminDashboard />} />
