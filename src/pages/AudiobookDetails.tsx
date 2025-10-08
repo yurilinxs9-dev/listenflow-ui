@@ -27,6 +27,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAudiobookAccess } from "@/hooks/useAudiobookAccess";
 import { useCoverGeneration } from "@/hooks/useCoverGeneration";
 import { useAuth } from "@/hooks/useAuth";
+import { useUserStatus } from "@/hooks/useUserStatus";
+import { AccessDenied } from "@/components/AccessDenied";
 
 const AudiobookDetails = () => {
   const { id } = useParams();
@@ -47,6 +49,7 @@ const AudiobookDetails = () => {
   const { getPresignedUrl, isLoading: isGettingUrl } = useAudiobookAccess();
   const { generateCover, isGenerating: isGeneratingCover } = useCoverGeneration();
   const { user } = useAuth();
+  const { isApproved, isPending, isRejected, loading: statusLoading } = useUserStatus();
 
   useEffect(() => {
     const fetchAudiobookDetails = async () => {
@@ -252,6 +255,11 @@ const AudiobookDetails = () => {
     const secs = Math.floor(seconds % 60);
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
+
+  // Show access denied if user is not approved
+  if (!statusLoading && (isPending || isRejected)) {
+    return <AccessDenied status={isPending ? 'pending' : 'rejected'} />;
+  }
 
   if (loading) {
     return (

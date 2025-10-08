@@ -3,6 +3,8 @@ import { HeroCarousel } from "@/components/HeroCarousel";
 import { CategoryRow } from "@/components/CategoryRow";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState } from "react";
+import { useUserStatus } from "@/hooks/useUserStatus";
+import { AccessDenied } from "@/components/AccessDenied";
 
 const Index = () => {
   const [myAudiobooksByCategory, setMyAudiobooksByCategory] = useState<Record<string, any[]>>({});
@@ -10,6 +12,7 @@ const Index = () => {
   const [featuredAudiobooks, setFeaturedAudiobooks] = useState<any[]>([]);
   const [topAudiobookIds, setTopAudiobookIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
+  const { isApproved, isPending, isRejected, loading: statusLoading } = useUserStatus();
 
   useEffect(() => {
     const fetchAudiobooks = async () => {
@@ -110,6 +113,11 @@ const Index = () => {
     const minutes = Math.floor((seconds % 3600) / 60);
     return `${hours}h ${minutes}min`;
   };
+
+  // Show access denied if user is not approved
+  if (!statusLoading && (isPending || isRejected)) {
+    return <AccessDenied status={isPending ? 'pending' : 'rejected'} />;
+  }
 
   return (
     <div className="min-h-screen bg-background">

@@ -200,37 +200,57 @@ export default function AdminUsers() {
                            user.status === 'pending' ? 'Pendente' : 
                            'Rejeitado'}
                         </Badge>
-                      </div>
-                      <CardDescription className="space-y-1">
-                        {user.email && (
-                          <div className="flex items-center gap-2">
-                            <Mail className="h-4 w-4" />
-                            <span>{user.email}</span>
-                          </div>
-                        )}
-                        <div className="flex items-center gap-2">
-                          <Calendar className="h-4 w-4" />
-                          <span>Cadastrado em {formatDate(user.created_at)}</span>
-                        </div>
-                      </CardDescription>
-                      {user.status === 'pending' && (
-                        <div className="flex gap-2 pt-2">
-                          <Button 
-                            size="sm" 
-                            onClick={() => updateUserStatus(user.id, 'approved')}
-                          >
-                            Aprovar
-                          </Button>
-                          <Button 
-                            size="sm" 
-                            variant="destructive"
-                            onClick={() => updateUserStatus(user.id, 'rejected')}
-                          >
-                            Rejeitar
-                          </Button>
-                        </div>
-                      )}
-                    </div>
+                       </div>
+                       <CardDescription className="space-y-1">
+                         {user.email && (
+                           <div className="flex items-center gap-2">
+                             <Mail className="h-4 w-4" />
+                             <span>{user.email}</span>
+                           </div>
+                         )}
+                         <div className="flex items-center gap-2">
+                           <Calendar className="h-4 w-4" />
+                           <span>Cadastrado em {formatDate(user.created_at)}</span>
+                         </div>
+                       </CardDescription>
+                       <div className="flex gap-2 pt-2 flex-wrap">
+                         {user.status === 'pending' && (
+                           <>
+                             <Button 
+                               size="sm" 
+                               onClick={() => updateUserStatus(user.id, 'approved')}
+                             >
+                               Aprovar
+                             </Button>
+                             <Button 
+                               size="sm" 
+                               variant="destructive"
+                               onClick={() => updateUserStatus(user.id, 'rejected')}
+                             >
+                               Rejeitar
+                             </Button>
+                           </>
+                         )}
+                         {user.status === 'approved' && (
+                           <Button 
+                             size="sm" 
+                             variant="outline"
+                             onClick={() => updateUserStatus(user.id, 'rejected')}
+                           >
+                             Bloquear Acesso
+                           </Button>
+                         )}
+                         {user.status === 'rejected' && (
+                           <Button 
+                             size="sm" 
+                             variant="outline"
+                             onClick={() => updateUserStatus(user.id, 'approved')}
+                           >
+                             Desbloquear Acesso
+                           </Button>
+                         )}
+                       </div>
+                     </div>
                     {user.avatar_url && (
                       <img 
                         src={user.avatar_url} 
