@@ -5,10 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, Trash2, Music, Edit, ArrowLeft, Sparkles } from "lucide-react";
+import { Plus, Trash2, Music, Edit, ArrowLeft, Sparkles, MessageSquare } from "lucide-react";
 import { useAdmin } from "@/hooks/useAdmin";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCoverGeneration } from "@/hooks/useCoverGeneration";
+import { useGenerateReviews } from "@/hooks/useGenerateReviews";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -45,6 +46,7 @@ export default function AdminAudiobooks() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [generatingCoverId, setGeneratingCoverId] = useState<string | null>(null);
   const { generateCover } = useCoverGeneration();
+  const { generateReviewsForAllBooks, isGenerating: isGeneratingReviews } = useGenerateReviews();
 
   useEffect(() => {
     if (!adminLoading && !isAdmin) {
@@ -229,14 +231,24 @@ export default function AdminAudiobooks() {
           <h1 className="text-4xl font-bold">Gerenciar Audiobooks</h1>
         </div>
 
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex justify-between items-center mb-6 flex-wrap gap-3">
           <p className="text-muted-foreground">
             Total de audiobooks: {audiobooks.length}
           </p>
-          <Button onClick={() => navigate("/upload")}>
-            <Plus className="mr-2 h-4 w-4" />
-            Adicionar Audiobook
-          </Button>
+          <div className="flex gap-3">
+            <Button
+              onClick={generateReviewsForAllBooks}
+              disabled={isGeneratingReviews}
+              variant="outline"
+            >
+              <MessageSquare className="mr-2 h-4 w-4" />
+              {isGeneratingReviews ? 'Gerando Avaliações...' : 'Gerar Avaliações'}
+            </Button>
+            <Button onClick={() => navigate("/upload")}>
+              <Plus className="mr-2 h-4 w-4" />
+              Adicionar Audiobook
+            </Button>
+          </div>
         </div>
 
         {isLoading ? (

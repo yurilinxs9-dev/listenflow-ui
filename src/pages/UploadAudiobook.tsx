@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Upload, Loader2, X, FileAudio, Sparkles } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useGenerateReviews } from "@/hooks/useGenerateReviews";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -32,6 +33,7 @@ export default function UploadAudiobook() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
+  const { generateReviews } = useGenerateReviews();
   const [isUploading, setIsUploading] = useState(false);
   const [audiobooks, setAudiobooks] = useState<AudiobookForm[]>([]);
 
@@ -461,18 +463,22 @@ export default function UploadAudiobook() {
           console.log(`[Upload] Inserindo registro no banco de dados`);
           
           // Create audiobook record
-          const { error: dbError } = await supabase.from("audiobooks").insert({
-            user_id: user.id,
-            title: audiobook.title.trim(),
-            author: audiobook.author.trim(),
-            narrator: audiobook.narrator?.trim() || null,
-            description: audiobook.description?.trim() || null,
-            genre: audiobook.genre?.trim() || null,
-            duration_seconds: audiobook.durationSeconds,
-            audio_url: audioUrl,
-            cover_url: coverUrl || null,
-            file_size: audiobook.audioFile.size,
-          });
+          const { data: insertedData, error: dbError } = await supabase
+            .from("audiobooks")
+            .insert({
+              user_id: user.id,
+              title: audiobook.title.trim(),
+              author: audiobook.author.trim(),
+              narrator: audiobook.narrator?.trim() || null,
+              description: audiobook.description?.trim() || null,
+              genre: audiobook.genre?.trim() || null,
+              duration_seconds: audiobook.durationSeconds,
+              audio_url: audioUrl,
+              cover_url: coverUrl || null,
+              file_size: audiobook.audioFile.size,
+            })
+            .select()
+            .single();
 
           if (dbError) {
             console.error(`[Upload] Erro ao inserir no banco:`, dbError);
@@ -480,6 +486,22 @@ export default function UploadAudiobook() {
           }
 
           console.log(`[Upload ${index + 1}] 🎉 CONCLUÍDO COM SUCESSO: ${audiobook.title}`);
+          
+          // Gerar avaliações automaticamente em segundo plano
+          if (insertedData) {
+            console.log(`[Upload ${index + 1}] 📝 Iniciando geração de avaliações...`);
+            // Não espera a conclusão, apenas inicia o processo
+            const reviewCount = Math.floor(Math.random() * 6) + 3; // 3 a 8 avaliações
+            generateReviews(
+              insertedData.id,
+              audiobook.title.trim(),
+              audiobook.author.trim(),
+              reviewCount
+            ).catch(err => {
+              console.error(`[Upload ${index + 1}] Erro ao gerar avaliações:`, err);
+            });
+          }
+          
           updateAudiobook(audiobook.id, 'uploadProgress', 100);
           results.push({ success: true, title: audiobook.title });
         } catch (error: any) {
