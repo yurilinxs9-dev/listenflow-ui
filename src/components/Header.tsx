@@ -40,7 +40,7 @@ export const Header = () => {
       <div className="container mx-auto px-4 py-4 flex items-center justify-between">
         <div className="flex items-center gap-8">
           <Link to="/" className="flex items-center">
-            <img src={logo} alt="RendaCast" className="h-16 w-auto" />
+            <img src={logo} alt="RendaCast" className="h-20 w-auto" />
           </Link>
           
           <nav className="hidden md:flex items-center gap-6">
