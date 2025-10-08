@@ -32,6 +32,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useUserStatus } from "@/hooks/useUserStatus";
 import { AccessDenied } from "@/components/AccessDenied";
 
+// Audio player with speed control and synchronized subtitles
 const AudiobookDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
