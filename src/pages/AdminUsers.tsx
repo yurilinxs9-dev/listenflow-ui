@@ -15,6 +15,7 @@ interface Profile {
   display_name: string | null;
   avatar_url: string | null;
   created_at: string;
+  status: string;
 }
 
 interface UserWithRole extends Profile {
@@ -77,6 +78,31 @@ export default function AdminUsers() {
     }
   };
 
+  const updateUserStatus = async (userId: string, newStatus: string) => {
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ status: newStatus })
+        .eq("id", userId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Sucesso",
+        description: `Usuário ${newStatus === 'approved' ? 'aprovado' : 'rejeitado'} com sucesso`,
+      });
+
+      loadUsers();
+    } catch (error: any) {
+      console.error("Error updating user status:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível atualizar o status do usuário",
+        variant: "destructive",
+      });
+    }
+  };
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('pt-BR', {
       day: '2-digit',
@@ -100,10 +126,29 @@ export default function AdminUsers() {
           <h1 className="text-4xl font-bold">Gerenciar Usuários</h1>
         </div>
 
-        <div className="mb-6">
-          <p className="text-muted-foreground">
-            Total de usuários cadastrados: {users.length}
-          </p>
+        <div className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-2xl font-bold">{users.length}</div>
+              <p className="text-sm text-muted-foreground">Total de usuários</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-2xl font-bold text-yellow-500">
+                {users.filter(u => u.status === 'pending').length}
+              </div>
+              <p className="text-sm text-muted-foreground">Aguardando aprovação</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-2xl font-bold text-green-500">
+                {users.filter(u => u.status === 'approved').length}
+              </div>
+              <p className="text-sm text-muted-foreground">Aprovados</p>
+            </CardContent>
+          </Card>
         </div>
 
         {isLoading ? (
@@ -133,8 +178,8 @@ export default function AdminUsers() {
               <Card key={user.id}>
                 <CardHeader>
                   <div className="flex items-start justify-between">
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-3">
+                    <div className="space-y-2 flex-1">
+                      <div className="flex items-center gap-3 flex-wrap">
                         <CardTitle className="text-xl">
                           {user.display_name || 'Sem nome'}
                         </CardTitle>
@@ -144,6 +189,17 @@ export default function AdminUsers() {
                             Admin
                           </Badge>
                         )}
+                        <Badge 
+                          variant={
+                            user.status === 'approved' ? 'default' : 
+                            user.status === 'pending' ? 'secondary' : 
+                            'destructive'
+                          }
+                        >
+                          {user.status === 'approved' ? 'Aprovado' : 
+                           user.status === 'pending' ? 'Pendente' : 
+                           'Rejeitado'}
+                        </Badge>
                       </div>
                       <CardDescription className="space-y-1">
                         {user.email && (
@@ -157,6 +213,23 @@ export default function AdminUsers() {
                           <span>Cadastrado em {formatDate(user.created_at)}</span>
                         </div>
                       </CardDescription>
+                      {user.status === 'pending' && (
+                        <div className="flex gap-2 pt-2">
+                          <Button 
+                            size="sm" 
+                            onClick={() => updateUserStatus(user.id, 'approved')}
+                          >
+                            Aprovar
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="destructive"
+                            onClick={() => updateUserStatus(user.id, 'rejected')}
+                          >
+                            Rejeitar
+                          </Button>
+                        </div>
+                      )}
                     </div>
                     {user.avatar_url && (
                       <img 
