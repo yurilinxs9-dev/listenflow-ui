@@ -90,7 +90,7 @@ const Index = () => {
           // Separar audiobooks do usuário dos globais e agrupar por categoria
           if (user) {
             const userBooks = transformed.filter(book => book.userId === user.id);
-            const otherBooks = transformed.filter(book => book.userId !== user.id || book.isGlobal);
+            const otherBooks = transformed.filter(book => book.userId !== user.id);
             setMyAudiobooksByCategory(groupByCategory(userBooks));
             setGlobalAudiobooksByCategory(groupByCategory(otherBooks));
           } else {
