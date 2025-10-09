@@ -249,6 +249,39 @@ export type Database = {
           },
         ]
       }
+      pending_uploads: {
+        Row: {
+          completed: boolean | null
+          created_at: string
+          expected_size: number | null
+          expires_at: string
+          filename: string
+          id: string
+          storage_key: string
+          user_id: string
+        }
+        Insert: {
+          completed?: boolean | null
+          created_at?: string
+          expected_size?: number | null
+          expires_at: string
+          filename: string
+          id?: string
+          storage_key: string
+          user_id: string
+        }
+        Update: {
+          completed?: boolean | null
+          created_at?: string
+          expected_size?: number | null
+          expires_at?: string
+          filename?: string
+          id?: string
+          storage_key?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -276,6 +309,36 @@ export type Database = {
           id?: string
           status?: string | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      rate_limit_tracking: {
+        Row: {
+          created_at: string
+          endpoint: string
+          id: string
+          ip_address: string | null
+          request_count: number | null
+          user_id: string | null
+          window_start: string
+        }
+        Insert: {
+          created_at?: string
+          endpoint: string
+          id?: string
+          ip_address?: string | null
+          request_count?: number | null
+          user_id?: string | null
+          window_start?: string
+        }
+        Update: {
+          created_at?: string
+          endpoint?: string
+          id?: string
+          ip_address?: string | null
+          request_count?: number | null
+          user_id?: string | null
+          window_start?: string
         }
         Relationships: []
       }
@@ -316,6 +379,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      upload_logs: {
+        Row: {
+          action: string
+          created_at: string
+          error_message: string | null
+          id: string
+          ip_address: string | null
+          success: boolean | null
+          target_key: string | null
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          ip_address?: string | null
+          success?: boolean | null
+          target_key?: string | null
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          ip_address?: string | null
+          success?: boolean | null
+          target_key?: string | null
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
       }
       user_lists: {
         Row: {
@@ -378,6 +477,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_rate_limit: {
+        Args: {
+          _endpoint: string
+          _ip_address: string
+          _max_requests?: number
+          _user_id: string
+          _window_minutes?: number
+        }
+        Returns: boolean
+      }
       has_role: {
         Args:
           | { _role: Database["public"]["Enums"]["app_role"]; _user_id: string }
