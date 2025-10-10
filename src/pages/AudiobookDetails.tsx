@@ -180,15 +180,20 @@ const AudiobookDetails = () => {
     };
   }, [audioUrl, transcriptions, showSubtitles]);
 
-  // Restore saved progress when available
+  // Restore saved progress when available (ONLY ONCE on load)
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio || !savedProgress || !audioUrl) return;
 
-    // Wait for audio to be ready
+    // Flag para garantir que só restaura uma vez
+    let hasRestored = false;
+
     const restoreProgress = () => {
+      if (hasRestored) return;
+      
       if (savedProgress.last_position > 0 && audio.duration > 0) {
         audio.currentTime = savedProgress.last_position;
+        hasRestored = true;
         console.log('[AudiobookDetails] ✅ Progresso restaurado para:', savedProgress.last_position, 'segundos');
       }
     };
@@ -201,18 +206,18 @@ const AudiobookDetails = () => {
       audio.addEventListener('loadeddata', restoreProgress);
       return () => audio.removeEventListener('loadeddata', restoreProgress);
     }
-  }, [savedProgress, audioUrl]);
+  }, [audioUrl]); // ✅ CRÍTICO: Depende APENAS de audioUrl, não de savedProgress
 
-  // Auto-save progress every 5 seconds
+  // Auto-save progress every 10 seconds (reduzido de 5 para evitar overhead)
   useEffect(() => {
     if (!id || !user || !audioRef.current || !isPlaying) return;
 
     const interval = setInterval(() => {
       const audio = audioRef.current;
-      if (audio && audio.duration > 0) {
+      if (audio && audio.duration > 0 && !audio.paused) {
         updateProgress(id, audio.currentTime, audio.duration, audio.currentTime);
       }
-    }, 5000); // Save every 5 seconds
+    }, 10000); // ✅ Aumentado para 10 segundos
 
     return () => clearInterval(interval);
   }, [id, user, isPlaying, updateProgress]);

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 
@@ -52,15 +52,14 @@ export const useProgress = (audiobookId?: string) => {
     }
   };
 
-  const updateProgress = async (
+  // Memoizar updateProgress para evitar re-renders infinitos
+  const updateProgress = useCallback(async (
     audiobookId: string,
     progressSeconds: number,
     durationSeconds: number,
     lastPosition: number
   ) => {
     if (!user) return;
-
-    console.log('[useProgress] 💾 Salvando progresso:', lastPosition.toFixed(2), 'segundos');
 
     try {
       const { error } = await supabase
@@ -81,12 +80,19 @@ export const useProgress = (audiobookId?: string) => {
 
       if (error) throw error;
 
-      console.log('[useProgress] ✅ Progresso salvo com sucesso');
-      await fetchProgress();
+      // ✅ CRÍTICO: Atualizar estado local sem fazer nova busca no banco
+      // Isso evita loop infinito e re-renders desnecessários
+      setProgress({
+        audiobook_id: audiobookId,
+        progress_seconds: progressSeconds,
+        duration_seconds: durationSeconds,
+        last_position: lastPosition,
+        updated_at: new Date().toISOString(),
+      });
     } catch (error) {
       console.error('[useProgress] ❌ Erro ao salvar progresso:', error);
     }
-  };
+  }, [user]);
 
   const getProgressPercentage = () => {
     if (!progress || !progress.duration_seconds) return 0;
