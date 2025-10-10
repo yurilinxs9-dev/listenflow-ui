@@ -85,6 +85,65 @@ serve(async (req) => {
       );
     }
 
+    // SEGURANÇA CRÍTICA: Verificar status do usuário
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('status')
+      .eq('id', user.id)
+      .single();
+
+    if (profileError || !profile) {
+      console.error('[Presigned URL] Failed to fetch user profile:', profileError);
+      
+      await supabase.from('security_audit_logs').insert({
+        user_id: user.id,
+        action: 'ACCESS_DENIED',
+        table_name: 'audiobooks',
+        suspicious: true,
+        details: { 
+          reason: 'profile_not_found',
+          audiobook_id: audiobookId,
+          ip: ipAddress
+        }
+      });
+      
+      return new Response(
+        JSON.stringify({ error: 'Acesso negado. Perfil não encontrado.' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Bloquear usuários não aprovados
+    if (profile.status !== 'approved') {
+      console.warn('[Presigned URL] Unapproved user access attempt:', { 
+        user: user.id, 
+        status: profile.status,
+        audiobook: audiobookId
+      });
+      
+      await supabase.from('security_audit_logs').insert({
+        user_id: user.id,
+        action: 'ACCESS_DENIED',
+        table_name: 'audiobooks',
+        suspicious: true,
+        details: { 
+          reason: 'user_not_approved',
+          user_status: profile.status,
+          audiobook_id: audiobookId,
+          ip: ipAddress
+        }
+      });
+      
+      return new Response(
+        JSON.stringify({ 
+          error: 'Sua conta ainda não foi aprovada. Aguarde aprovação do administrador.' 
+        }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('[Presigned URL] User approved, checking audiobook access');
+
     // SEGURANÇA: Verificar se usuário tem acesso ao audiobook
     // Permitir acesso se:
     // 1. O audiobook é global (is_global = true) 
