@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, cloneElement } from 'react';
 import { Plus, FolderPlus } from 'lucide-react';
 import {
   Dialog,
@@ -52,26 +52,30 @@ export const AddToListDialog = ({ audiobookId, trigger }: AddToListDialogProps) 
     }
   };
 
-  const handleTriggerClick = (e: React.MouseEvent) => {
+  const handleTriggerClick = () => {
     console.log('[AddToListDialog] Trigger clicked!', { audiobookId, currentOpen: open });
-    e.preventDefault();
-    e.stopPropagation();
     console.log('[AddToListDialog] Setting open to true');
     setOpen(true);
   };
 
+  const triggerElement = trigger ? (
+    cloneElement(trigger as React.ReactElement, {
+      onClick: (e: React.MouseEvent) => {
+        console.log('[AddToListDialog] Clone onClick fired');
+        e.stopPropagation();
+        handleTriggerClick();
+      }
+    })
+  ) : (
+    <Button variant="outline" size="sm" onClick={handleTriggerClick}>
+      <FolderPlus className="w-4 h-4 mr-2" />
+      Adicionar à Coleção
+    </Button>
+  );
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      {trigger ? (
-        <div onClick={handleTriggerClick}>
-          {trigger}
-        </div>
-      ) : (
-        <Button variant="outline" size="sm" onClick={handleTriggerClick}>
-          <FolderPlus className="w-4 h-4 mr-2" />
-          Adicionar à Coleção
-        </Button>
-      )}
+      {triggerElement}
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Adicionar à Coleção</DialogTitle>
