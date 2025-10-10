@@ -193,7 +193,9 @@ const AudiobookDetails = () => {
       
       if (savedProgress.last_position > 0 && audio.duration > 0) {
         audio.currentTime = savedProgress.last_position;
-        setProgress([savedProgress.last_position]); // ✅ Atualiza barra visual
+        // ✅ Converter para porcentagem (0-100) para o slider
+        const progressPercent = (savedProgress.last_position / audio.duration) * 100;
+        setProgress([progressPercent]);
         hasRestoredRef.current = true;
         console.log('[AudiobookDetails] ✅ Progresso restaurado para:', savedProgress.last_position, 'segundos');
       }
