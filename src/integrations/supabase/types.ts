@@ -474,36 +474,7 @@ export type Database = {
       }
     }
     Views: {
-      public_reviews: {
-        Row: {
-          audiobook_id: string | null
-          created_at: string | null
-          id: string | null
-          rating: number | null
-          review_text: string | null
-          updated_at: string | null
-          user_id: string | null
-        }
-        Insert: {
-          audiobook_id?: string | null
-          created_at?: string | null
-          id?: string | null
-          rating?: number | null
-          review_text?: string | null
-          updated_at?: string | null
-          user_id?: never
-        }
-        Update: {
-          audiobook_id?: string | null
-          created_at?: string | null
-          id?: string | null
-          rating?: number | null
-          review_text?: string | null
-          updated_at?: string | null
-          user_id?: never
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Functions: {
       check_rate_limit: {
