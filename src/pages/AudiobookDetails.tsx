@@ -466,20 +466,20 @@ const AudiobookDetails = () => {
             Voltar
           </Button>
 
-          <div className="grid md:grid-cols-[400px,1fr] gap-12 items-start">
+          <div className="grid md:grid-cols-[minmax(300px,400px),1fr] gap-8 md:gap-12 items-start">
             {/* Cover */}
-            <div className="space-y-6 animate-scale-in">
-              <div className="relative aspect-[2/3] rounded-2xl overflow-hidden shadow-2xl">
+            <div className="space-y-6 animate-scale-in w-full max-w-md mx-auto md:mx-0">
+              <div className="relative aspect-[2/3] rounded-2xl overflow-hidden shadow-2xl bg-card">
                 <img
                   src={audiobook.cover_url || "/placeholder.svg"}
                   alt={audiobook.title}
                   loading="lazy"
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-contain"
                   onError={(e) => {
                     e.currentTarget.src = "/placeholder.svg";
                   }}
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
               </div>
 
               {!audiobook.cover_url && user && audiobook.user_id === user.id && (
@@ -494,9 +494,9 @@ const AudiobookDetails = () => {
                 </Button>
               )}
 
-              <div className="flex gap-3">
+              <div className="flex flex-wrap sm:flex-nowrap gap-3">
                 <Button
-                  className="flex-1 gradient-hero border-0 glow-effect h-12"
+                  className="flex-1 min-w-[180px] gradient-hero border-0 glow-effect h-12"
                   onClick={handlePlayPause}
                   disabled={streaming.isLoading || streaming.buffering}
                 >
@@ -520,7 +520,7 @@ const AudiobookDetails = () => {
                 <Button
                   size="icon"
                   variant="secondary"
-                  className="h-12 w-12"
+                  className="h-12 w-12 flex-shrink-0"
                   onClick={() => toggleFavorite(id || "1")}
                   disabled={isProcessing}
                 >
@@ -529,14 +529,14 @@ const AudiobookDetails = () => {
                   />
                 </Button>
 
-                <Button size="icon" variant="secondary" className="h-12 w-12">
+                <Button size="icon" variant="secondary" className="h-12 w-12 flex-shrink-0">
                   <Share2 className="w-5 h-5" />
                 </Button>
 
                 <AddToListDialog
                   audiobookId={id || "1"}
                   trigger={
-                    <Button size="icon" variant="secondary" className="h-12 w-12">
+                    <Button size="icon" variant="secondary" className="h-12 w-12 flex-shrink-0">
                       <FolderPlus className="w-5 h-5" />
                     </Button>
                   }
@@ -658,10 +658,11 @@ const AudiobookDetails = () => {
       )}
 
       {/* Fixed Player */}
-      <div className="fixed bottom-0 left-0 right-0 bg-card border-t border-border backdrop-blur-xl shadow-2xl z-50">
-        <div className="container mx-auto px-4 md:px-8 py-4">
-          <div className="flex flex-col gap-4">
-            <div className="flex items-center gap-4">
+      <div className="fixed bottom-0 left-0 right-0 bg-card/95 border-t border-border backdrop-blur-xl shadow-2xl z-50">
+        <div className="container mx-auto px-3 sm:px-4 md:px-8 py-3 sm:py-4">
+          <div className="flex flex-col gap-3 sm:gap-4">
+            {/* Progress bar */}
+            <div className="flex items-center gap-2 sm:gap-4">
               <Slider
                 value={progress}
                 onValueChange={handleProgressChange}
@@ -669,22 +670,26 @@ const AudiobookDetails = () => {
                 step={0.1}
                 className="flex-1"
               />
-              <span className="text-sm text-muted-foreground min-w-[100px] text-right">
+              <span className="text-xs sm:text-sm text-muted-foreground min-w-[80px] sm:min-w-[100px] text-right tabular-nums">
                 {formatTime(currentTime)} / {formatTime(duration)}
               </span>
             </div>
 
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-3 flex-1 min-w-0">
-                <img
-                  src={audiobook.cover_url || "/placeholder.svg"}
-                  alt={audiobook.title}
-                  className="w-12 h-12 rounded object-cover flex-shrink-0"
-                  onError={(e) => {
-                    e.currentTarget.src = "/placeholder.svg";
-                  }}
-                />
-                <div className="hidden md:block min-w-0">
+            {/* Controls */}
+            <div className="flex items-center gap-2 sm:gap-4">
+              {/* Thumbnail and info */}
+              <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0 overflow-hidden">
+                <div className="relative w-10 h-10 sm:w-12 sm:h-12 rounded overflow-hidden bg-card flex-shrink-0">
+                  <img
+                    src={audiobook.cover_url || "/placeholder.svg"}
+                    alt={audiobook.title}
+                    className="w-full h-full object-contain"
+                    onError={(e) => {
+                      e.currentTarget.src = "/placeholder.svg";
+                    }}
+                  />
+                </div>
+                <div className="hidden sm:block min-w-0 flex-1">
                   <p className="font-semibold text-sm truncate">{audiobook.title}</p>
                   <p className="text-xs text-muted-foreground truncate">
                     {audiobook.author}
@@ -692,39 +697,41 @@ const AudiobookDetails = () => {
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
-                <Button size="icon" variant="ghost" onClick={handleSkipBack}>
-                  <SkipBack className="w-5 h-5" />
+              {/* Play controls */}
+              <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+                <Button size="icon" variant="ghost" onClick={handleSkipBack} className="h-9 w-9 sm:h-10 sm:w-10">
+                  <SkipBack className="w-4 h-4 sm:w-5 sm:h-5" />
                 </Button>
 
                 <Button
                   size="icon"
-                  className="gradient-hero border-0 w-12 h-12"
+                  className="gradient-hero border-0 w-10 h-10 sm:w-12 sm:h-12"
                   onClick={handlePlayPause}
                   disabled={streaming.isLoading || streaming.buffering}
                 >
                   {streaming.isLoading || streaming.buffering ? (
                     <span className="text-xs">...</span>
                   ) : isPlaying ? (
-                    <Pause className="w-5 h-5" />
+                    <Pause className="w-4 h-4 sm:w-5 sm:h-5" />
                   ) : (
-                    <Play className="w-5 h-5" fill="currentColor" />
+                    <Play className="w-4 h-4 sm:w-5 sm:h-5" fill="currentColor" />
                   )}
                 </Button>
 
-                <Button size="icon" variant="ghost" onClick={handleSkipForward}>
-                  <SkipForward className="w-5 h-5" />
+                <Button size="icon" variant="ghost" onClick={handleSkipForward} className="h-9 w-9 sm:h-10 sm:w-10">
+                  <SkipForward className="w-4 h-4 sm:w-5 sm:h-5" />
                 </Button>
               </div>
 
-              <div className="flex items-center gap-3 flex-1 justify-end">
-                {/* Playback speed control */}
+              {/* Additional controls */}
+              <div className="flex items-center gap-2 sm:gap-3 flex-1 justify-end min-w-0">
+                {/* Playback speed */}
                 <div className="hidden sm:flex items-center gap-2">
-                  <Gauge className="w-4 h-4 text-muted-foreground" />
+                  <Gauge className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                   <select
                     value={playbackRate}
                     onChange={(e) => setPlaybackRate(parseFloat(e.target.value))}
-                    className="bg-secondary text-foreground text-sm rounded px-2 py-1 border border-border focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="bg-secondary text-foreground text-xs sm:text-sm rounded px-1.5 sm:px-2 py-1 border border-border focus:outline-none focus:ring-2 focus:ring-primary"
                   >
                     <option value="0.5">0.5x</option>
                     <option value="0.75">0.75x</option>
@@ -736,28 +743,28 @@ const AudiobookDetails = () => {
                   </select>
                 </div>
 
-                {/* Subtitle toggle */}
+                {/* Subtitles */}
                 {transcriptions.length > 0 && (
                   <Button
                     size="icon"
                     variant="ghost"
                     onClick={() => setShowSubtitles(!showSubtitles)}
-                    className="hidden sm:flex"
+                    className="hidden sm:flex h-9 w-9 sm:h-10 sm:w-10"
                     title={showSubtitles ? "Ocultar legendas" : "Mostrar legendas"}
                   >
-                    <Captions className={`w-5 h-5 ${showSubtitles ? "text-primary" : "text-muted-foreground"}`} />
+                    <Captions className={`w-4 h-4 sm:w-5 sm:h-5 ${showSubtitles ? "text-primary" : "text-muted-foreground"}`} />
                   </Button>
                 )}
 
-                {/* Volume control */}
-                <div className="hidden md:flex items-center gap-2">
-                  <Volume2 className="w-5 h-5 text-muted-foreground" />
+                {/* Volume */}
+                <div className="hidden lg:flex items-center gap-2">
+                  <Volume2 className="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground flex-shrink-0" />
                   <Slider
                     value={volume}
                     onValueChange={setVolume}
                     max={100}
                     step={1}
-                    className="w-24"
+                    className="w-20 sm:w-24"
                   />
                 </div>
               </div>
