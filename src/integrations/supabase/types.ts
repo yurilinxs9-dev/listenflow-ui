@@ -571,6 +571,36 @@ export type Database = {
         }
         Relationships: []
       }
+      reviews_anonymous: {
+        Row: {
+          anonymous_user_id: string | null
+          audiobook_id: string | null
+          created_at: string | null
+          id: string | null
+          rating: number | null
+          review_text: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          anonymous_user_id?: never
+          audiobook_id?: string | null
+          created_at?: string | null
+          id?: string | null
+          rating?: number | null
+          review_text?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          anonymous_user_id?: never
+          audiobook_id?: string | null
+          created_at?: string | null
+          id?: string | null
+          rating?: number | null
+          review_text?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       reviews_public: {
         Row: {
           audiobook_id: string | null
