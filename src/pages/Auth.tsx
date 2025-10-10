@@ -3,8 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Headphones, Mail, Lock, User } from 'lucide-react';
+import { Mail, Lock, User } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import logoRendaCast from '@/assets/logo-rendacast.png';
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -45,12 +46,13 @@ const Auth = () => {
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-md space-y-8 animate-fade-in">
         <div className="text-center">
-          <div className="flex justify-center mb-4">
-            <div className="gradient-hero p-4 rounded-2xl glow-effect">
-              <Headphones className="w-12 h-12" />
-            </div>
+          <div className="flex justify-center mb-6">
+            <img 
+              src={logoRendaCast} 
+              alt="RendaCast" 
+              className="w-64 h-auto"
+            />
           </div>
-          <h1 className="text-3xl font-bold mb-2">ListenFlow</h1>
           <p className="text-muted-foreground">
             {isLogin ? 'Entre na sua conta' : 'Crie sua conta'}
           </p>
