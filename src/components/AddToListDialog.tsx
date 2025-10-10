@@ -28,6 +28,10 @@ export const AddToListDialog = ({ audiobookId, trigger }: AddToListDialogProps) 
   const [newListDescription, setNewListDescription] = useState('');
   const { lists, loading, createList, addToList } = useUserLists();
 
+  console.log('[AddToListDialog] Component mounted, audiobookId:', audiobookId);
+  console.log('[AddToListDialog] Dialog open state:', open);
+  console.log('[AddToListDialog] Lists loaded:', lists.length, 'Loading:', loading);
+
   const handleAddToList = async (listId: string) => {
     const success = await addToList(listId, audiobookId);
     if (success) {
@@ -49,8 +53,10 @@ export const AddToListDialog = ({ audiobookId, trigger }: AddToListDialogProps) 
   };
 
   const handleTriggerClick = (e: React.MouseEvent) => {
+    console.log('[AddToListDialog] Trigger clicked!', { audiobookId, currentOpen: open });
     e.preventDefault();
     e.stopPropagation();
+    console.log('[AddToListDialog] Setting open to true');
     setOpen(true);
   };
 
