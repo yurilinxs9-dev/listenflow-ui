@@ -55,13 +55,19 @@ export const useProgress = (audiobookId?: string) => {
     try {
       const { error } = await supabase
         .from('audiobook_progress')
-        .upsert({
-          user_id: user.id,
-          audiobook_id: audiobookId,
-          progress_seconds: progressSeconds,
-          duration_seconds: durationSeconds,
-          last_position: lastPosition,
-        });
+        .upsert(
+          {
+            user_id: user.id,
+            audiobook_id: audiobookId,
+            progress_seconds: progressSeconds,
+            duration_seconds: durationSeconds,
+            last_position: lastPosition,
+          },
+          {
+            onConflict: 'user_id,audiobook_id',
+            ignoreDuplicates: false,
+          }
+        );
 
       if (error) throw error;
 
