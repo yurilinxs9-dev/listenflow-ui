@@ -638,13 +638,17 @@ const AudiobookDetails = () => {
         </div>
       </main>
 
-      {/* Audio element with progressive streaming */}
+      {/* Audio element with progressive streaming optimization */}
       {audioUrl && (
         <audio
           ref={audioRef}
           src={audioUrl}
-          preload="metadata"
+          preload="auto"
           crossOrigin="anonymous"
+          onLoadedMetadata={() => console.log('[Player] Metadata loaded - ready to play')}
+          onCanPlay={() => console.log('[Player] Can play - buffer sufficient')}
+          onWaiting={() => console.log('[Player] Waiting for buffer...')}
+          onCanPlayThrough={() => console.log('[Player] Can play through - fully buffered')}
         />
       )}
 

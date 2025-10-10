@@ -92,10 +92,11 @@ serve(async (req) => {
 
     console.log(`[Presigned URL] Generating presigned URL for bucket: ${bucket}, path: ${path}`);
 
-    // Generate presigned URL with 5 minutes expiration
+    // Generate presigned URL with 30 minutes expiration for better streaming
+    // This reduces the need for frequent URL refreshes during playback
     const { data: signedUrl, error: signError } = await supabase.storage
       .from(bucket)
-      .createSignedUrl(path, 300); // 300 seconds = 5 minutes
+      .createSignedUrl(path, 1800); // 1800 seconds = 30 minutes
 
     if (signError || !signedUrl) {
       console.error('[Presigned URL] Error generating presigned URL:', signError);
@@ -113,11 +114,22 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         url: signedUrl.signedUrl, 
-        expiresIn: 300 
+        expiresIn: 1800,
+        // Metadata for optimization
+        streaming: {
+          preload: 'auto',
+          bufferSize: 5 * 1024 * 1024, // 5MB
+          cacheControl: 'public, max-age=1800'
+        }
       }),
       { 
         status: 200, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        headers: { 
+          ...corsHeaders, 
+          'Content-Type': 'application/json',
+          // Add cache control for CDN optimization
+          'Cache-Control': 'private, max-age=300' // Cache response for 5 minutes
+        } 
       }
     );
 
