@@ -38,8 +38,11 @@ export const Header = () => {
     <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border">
       <div className="container mx-auto px-4 py-4 flex items-center justify-between">
         <div className="flex items-center gap-8">
-          <Link to="/" className="text-3xl font-bold bg-gradient-to-r from-[#8B0000] via-[#DC143C] to-[#FF8C00] bg-clip-text text-transparent tracking-tight">
-            RendaCast
+          <Link to="/" className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl gradient-hero flex items-center justify-center glow-effect">
+              <Music className="w-6 h-6 text-primary-foreground" />
+            </div>
+            <span className="text-2xl font-bold text-foreground">ListenFlow</span>
           </Link>
           
           <nav className="hidden md:flex items-center gap-6">
