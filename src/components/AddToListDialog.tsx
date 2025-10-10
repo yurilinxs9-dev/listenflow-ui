@@ -1,4 +1,4 @@
-import { useState, cloneElement } from 'react';
+import { useState } from 'react';
 import { Plus, FolderPlus } from 'lucide-react';
 import {
   Dialog,
@@ -28,9 +28,8 @@ export const AddToListDialog = ({ audiobookId, trigger }: AddToListDialogProps) 
   const [newListDescription, setNewListDescription] = useState('');
   const { lists, loading, createList, addToList } = useUserLists();
 
-  console.log('[AddToListDialog] Component mounted, audiobookId:', audiobookId);
+  console.log('[AddToListDialog] Component rendered, audiobookId:', audiobookId);
   console.log('[AddToListDialog] Dialog open state:', open);
-  console.log('[AddToListDialog] Lists loaded:', lists.length, 'Loading:', loading);
 
   const handleAddToList = async (listId: string) => {
     const success = await addToList(listId, audiobookId);
@@ -52,30 +51,25 @@ export const AddToListDialog = ({ audiobookId, trigger }: AddToListDialogProps) 
     }
   };
 
-  const handleTriggerClick = () => {
-    console.log('[AddToListDialog] Trigger clicked!', { audiobookId, currentOpen: open });
-    console.log('[AddToListDialog] Setting open to true');
+  const handleOpenDialog = () => {
+    console.log('[AddToListDialog] 🎯 BOTÃO CLICADO! Abrindo dialog...');
     setOpen(true);
   };
 
-  const triggerElement = trigger ? (
-    cloneElement(trigger as React.ReactElement, {
-      onClick: (e: React.MouseEvent) => {
-        console.log('[AddToListDialog] Clone onClick fired');
-        e.stopPropagation();
-        handleTriggerClick();
-      }
-    })
-  ) : (
-    <Button variant="outline" size="sm" onClick={handleTriggerClick}>
-      <FolderPlus className="w-4 h-4 mr-2" />
-      Adicionar à Coleção
-    </Button>
-  );
-
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      {triggerElement}
+    <>
+      {trigger ? (
+        <div onClick={handleOpenDialog} style={{ display: 'inline-block', cursor: 'pointer' }}>
+          {trigger}
+        </div>
+      ) : (
+        <Button variant="outline" size="sm" onClick={handleOpenDialog}>
+          <FolderPlus className="w-4 h-4 mr-2" />
+          Adicionar à Coleção
+        </Button>
+      )}
+      
+      <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Adicionar à Coleção</DialogTitle>
@@ -171,6 +165,7 @@ export const AddToListDialog = ({ audiobookId, trigger }: AddToListDialogProps) 
           )}
         </div>
       </DialogContent>
-    </Dialog>
+      </Dialog>
+    </>
   );
 };
