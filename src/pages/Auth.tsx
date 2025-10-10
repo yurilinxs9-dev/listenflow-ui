@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Mail, Lock, User, Music } from 'lucide-react';
+import { Mail, Lock, User } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
 const Auth = () => {
@@ -45,12 +45,9 @@ const Auth = () => {
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-md space-y-8 animate-fade-in">
         <div className="text-center">
-          <div className="flex justify-center items-center gap-2 mb-6">
-            <Music className="w-8 h-8 text-primary" />
-            <span className="text-3xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
-              ListenFlow
-            </span>
-          </div>
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-[#8B0000] via-[#DC143C] to-[#FF8C00] bg-clip-text text-transparent tracking-tight mb-6">
+            RendaCast
+          </h1>
           <p className="text-muted-foreground">
             {isLogin ? 'Entre na sua conta' : 'Crie sua conta'}
           </p>
