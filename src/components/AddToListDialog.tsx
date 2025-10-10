@@ -48,16 +48,24 @@ export const AddToListDialog = ({ audiobookId, trigger }: AddToListDialogProps) 
     }
   };
 
+  const handleTriggerClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setOpen(true);
+  };
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {trigger || (
-          <Button variant="outline" size="sm">
-            <FolderPlus className="w-4 h-4 mr-2" />
-            Adicionar à Coleção
-          </Button>
-        )}
-      </DialogTrigger>
+      {trigger ? (
+        <div onClick={handleTriggerClick}>
+          {trigger}
+        </div>
+      ) : (
+        <Button variant="outline" size="sm" onClick={handleTriggerClick}>
+          <FolderPlus className="w-4 h-4 mr-2" />
+          Adicionar à Coleção
+        </Button>
+      )}
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Adicionar à Coleção</DialogTitle>
