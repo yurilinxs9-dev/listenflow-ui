@@ -19,22 +19,18 @@ export const useAdmin = () => {
       console.log('[useAdmin] Checking admin status for user:', user.id);
 
       try {
-        const { data, error } = await supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', user.id)
-          .eq('role', 'admin')
-          .maybeSingle();
+        // SEGURANÇA: Usa edge function para verificação server-side
+        // que não pode ser burlada pelo cliente
+        const { data, error } = await supabase.functions.invoke('check-admin-status');
 
-        console.log('[useAdmin] Query result:', { data, error });
+        console.log('[useAdmin] Admin check result:', { data, error });
 
         if (error) {
           console.error('[useAdmin] Error checking admin status:', error);
           setIsAdmin(false);
         } else {
-          const isAdminUser = !!data;
-          console.log('[useAdmin] Is admin?', isAdminUser);
-          setIsAdmin(isAdminUser);
+          setIsAdmin(data?.isAdmin === true);
+          console.log('[useAdmin] Is admin?', data?.isAdmin);
         }
       } catch (error) {
         console.error('[useAdmin] Exception checking admin status:', error);

@@ -27,7 +27,7 @@ serve(async (req) => {
       );
     }
 
-    // Verify user from JWT
+    // Verify user from JWT (SERVER-SIDE - não pode ser burlado)
     const token = authHeader.replace('Bearer ', '');
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     
@@ -36,6 +36,25 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ error: 'Sessão inválida. Faça login novamente.' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // RATE LIMITING: Prevenir brute force e abuso
+    const ipAddress = req.headers.get('x-forwarded-for') || 'unknown';
+    const { data: rateLimitOk, error: rateLimitError } = await supabase
+      .rpc('check_rate_limit', {
+        _user_id: user.id,
+        _ip_address: ipAddress,
+        _endpoint: 'get-audiobook-presigned-url',
+        _max_requests: 60, // 60 requisições
+        _window_minutes: 5  // em 5 minutos
+      });
+
+    if (rateLimitError || !rateLimitOk) {
+      console.warn('[Presigned URL] Rate limit exceeded:', { user: user.id, ip: ipAddress });
+      return new Response(
+        JSON.stringify({ error: 'Muitas requisições. Tente novamente em alguns minutos.' }),
+        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -50,10 +69,11 @@ serve(async (req) => {
 
     console.log(`[Presigned URL] User ${user.id} requesting presigned URL for audiobook ${audiobookId}`);
 
-    // Get audiobook from database
+    // Get audiobook from database - SEM FILTROS MANIPULÁVEIS NA URL
+    // A verificação de acesso é feita no servidor
     const { data: audiobook, error: dbError } = await supabase
       .from('audiobooks')
-      .select('id, audio_url, require_login, min_subscription_level, user_id')
+      .select('id, audio_url, require_login, min_subscription_level, user_id, is_global')
       .eq('id', audiobookId)
       .single();
 
@@ -65,18 +85,41 @@ serve(async (req) => {
       );
     }
 
+    // SEGURANÇA: Verificar se usuário tem acesso ao audiobook
+    // Lógica server-side que não pode ser burlada
+    if (!audiobook.is_global && audiobook.user_id !== user.id) {
+      console.warn('[Presigned URL] Unauthorized access attempt:', { 
+        user: user.id, 
+        audiobook: audiobookId,
+        owner: audiobook.user_id
+      });
+      
+      // Log de auditoria para tentativa de acesso não autorizado
+      await supabase.from('security_audit_logs').insert({
+        user_id: user.id,
+        action: 'unauthorized_audiobook_access',
+        table_name: 'audiobooks',
+        record_id: audiobookId,
+        suspicious: true,
+        details: { 
+          audiobook_id: audiobookId,
+          owner_id: audiobook.user_id,
+          ip: ipAddress
+        }
+      });
+      
+      return new Response(
+        JSON.stringify({ error: 'Você não tem permissão para acessar este audiobook.' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Check if audiobook requires login
     if (audiobook.require_login) {
       console.log('[Presigned URL] Audiobook requires login - OK');
     }
 
-    // TODO: Implement subscription level check if needed
-    // if (audiobook.min_subscription_level === 'premium') {
-    //   // Check if user has premium subscription
-    // }
-
     // Extract bucket and path from audio_url
-    // Assuming audio_url format: https://{project}.supabase.co/storage/v1/object/public/audiobooks/{file}
     const urlParts = audiobook.audio_url.split('/storage/v1/object/public/');
     if (urlParts.length !== 2) {
       console.error('[Presigned URL] Invalid audio_url format:', audiobook.audio_url);
@@ -92,8 +135,7 @@ serve(async (req) => {
 
     console.log(`[Presigned URL] Generating presigned URL for bucket: ${bucket}, path: ${path}`);
 
-    // Generate presigned URL with 30 minutes expiration for better streaming
-    // This reduces the need for frequent URL refreshes during playback
+    // Generate presigned URL with 30 minutes expiration
     const { data: signedUrl, error: signError } = await supabase.storage
       .from(bucket)
       .createSignedUrl(path, 1800); // 1800 seconds = 30 minutes
@@ -108,17 +150,26 @@ serve(async (req) => {
 
     console.log(`[Presigned URL] Successfully generated presigned URL for user ${user.id}`);
 
-    // Log access for analytics (optional)
-    // You could insert into an access_logs table here
+    // Log acesso para analytics
+    await supabase.from('security_audit_logs').insert({
+      user_id: user.id,
+      action: 'audiobook_access',
+      table_name: 'audiobooks',
+      record_id: audiobookId,
+      details: { 
+        audiobook_id: audiobookId,
+        ip: ipAddress,
+        timestamp: new Date().toISOString()
+      }
+    });
 
     return new Response(
       JSON.stringify({ 
         url: signedUrl.signedUrl, 
         expiresIn: 1800,
-        // Metadata for optimization
         streaming: {
           preload: 'auto',
-          bufferSize: 5 * 1024 * 1024, // 5MB
+          bufferSize: 5 * 1024 * 1024,
           cacheControl: 'public, max-age=1800'
         }
       }),
@@ -127,8 +178,7 @@ serve(async (req) => {
         headers: { 
           ...corsHeaders, 
           'Content-Type': 'application/json',
-          // Add cache control for CDN optimization
-          'Cache-Control': 'private, max-age=300' // Cache response for 5 minutes
+          'Cache-Control': 'private, max-age=300'
         } 
       }
     );

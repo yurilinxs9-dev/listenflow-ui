@@ -20,3 +20,6 @@ verify_jwt = true
 
 [functions.admin-complete-upload]
 verify_jwt = true
+
+[functions.check-admin-status]
+verify_jwt = true
