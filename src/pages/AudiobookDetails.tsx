@@ -193,6 +193,7 @@ const AudiobookDetails = () => {
       
       if (savedProgress.last_position > 0 && audio.duration > 0) {
         audio.currentTime = savedProgress.last_position;
+        setProgress([savedProgress.last_position]); // ✅ Atualiza barra visual
         hasRestoredRef.current = true;
         console.log('[AudiobookDetails] ✅ Progresso restaurado para:', savedProgress.last_position, 'segundos');
       }
