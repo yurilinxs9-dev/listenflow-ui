@@ -5,32 +5,14 @@ import { Header } from '@/components/Header';
 import { Button } from '@/components/ui/button';
 import { useUserLists } from '@/hooks/useUserLists';
 import { AudiobookCard } from '@/components/AudiobookCard';
-
-// Mock audiobooks data - in production, fetch from API
-const mockAudiobooks: Record<string, any> = {
-  'autoajuda-1': {
-    id: 'autoajuda-1',
-    title: 'O Poder do Hábito',
-    author: 'Charles Duhigg',
-    cover: '/placeholder.svg',
-    duration: '10h 53min',
-    rating: 4.7,
-  },
-  'ficcao-1': {
-    id: 'ficcao-1',
-    title: '1984',
-    author: 'George Orwell',
-    cover: '/placeholder.svg',
-    duration: '11h 22min',
-    rating: 4.8,
-  },
-};
+import { supabase } from '@/integrations/supabase/client';
 
 export default function ListDetails() {
   const { listId } = useParams<{ listId: string }>();
   const navigate = useNavigate();
   const { lists, getListItems, removeFromList, loading } = useUserLists();
   const [listItems, setListItems] = useState<any[]>([]);
+  const [audiobooks, setAudiobooks] = useState<Record<string, any>>({});
   const [itemsLoading, setItemsLoading] = useState(true);
 
   const currentList = lists.find(l => l.id === listId);
@@ -47,7 +29,40 @@ export default function ListDetails() {
     setItemsLoading(true);
     const items = await getListItems(listId);
     setListItems(items);
+
+    // Buscar dados reais dos audiobooks do Supabase
+    if (items.length > 0) {
+      const audiobookIds = items.map((item: any) => item.audiobook_id);
+      const { data, error } = await supabase
+        .from('audiobooks')
+        .select('*')
+        .in('id', audiobookIds);
+
+      if (error) {
+        console.error('Erro ao buscar audiobooks da lista:', error);
+      } else if (data) {
+        // Criar um objeto indexado por ID para acesso rápido
+        const audiobooksMap = data.reduce((acc: any, book: any) => {
+          acc[book.id] = {
+            id: book.id,
+            title: book.title,
+            author: book.author,
+            cover: book.cover_url || '/placeholder.svg',
+            duration: formatDuration(book.duration_seconds),
+          };
+          return acc;
+        }, {});
+        setAudiobooks(audiobooksMap);
+      }
+    }
+
     setItemsLoading(false);
+  };
+
+  const formatDuration = (seconds: number): string => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    return `${hours}h ${minutes}min`;
   };
 
   const handleRemoveItem = async (audiobookId: string) => {
@@ -117,17 +132,12 @@ export default function ListDetails() {
             </Button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
             {listItems.map((item) => {
-              // In production, fetch actual audiobook data
-              const audiobook = mockAudiobooks[item.audiobook_id] || {
-                id: item.audiobook_id,
-                title: 'Audiobook',
-                author: 'Autor',
-                cover: '/placeholder.svg',
-                duration: '0h 0min',
-                rating: 0,
-              };
+              const audiobook = audiobooks[item.audiobook_id];
+
+              // Se o audiobook não foi encontrado, não renderizar
+              if (!audiobook) return null;
 
               return (
                 <div key={item.id} className="relative group">
@@ -135,8 +145,11 @@ export default function ListDetails() {
                   <Button
                     variant="destructive"
                     size="icon"
-                    className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                    onClick={() => handleRemoveItem(item.audiobook_id)}
+                    className="absolute top-2 right-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleRemoveItem(item.audiobook_id);
+                    }}
                   >
                     <Trash2 className="w-4 h-4" />
                   </Button>
