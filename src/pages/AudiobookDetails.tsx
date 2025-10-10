@@ -38,6 +38,7 @@ const AudiobookDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const audioRef = useRef<HTMLAudioElement>(null);
+  const hasRestoredRef = useRef(false); // Flag para garantir restauração única
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState([0]);
   const [volume, setVolume] = useState([70]);
@@ -183,17 +184,15 @@ const AudiobookDetails = () => {
   // Restore saved progress when available (ONLY ONCE on load)
   useEffect(() => {
     const audio = audioRef.current;
-    if (!audio || !savedProgress || !audioUrl) return;
-
-    // Flag para garantir que só restaura uma vez
-    let hasRestored = false;
+    if (!audio || !savedProgress || !audioUrl || hasRestoredRef.current) return;
 
     const restoreProgress = () => {
-      if (hasRestored) return;
+      // Só restaura se ainda não restaurou E se tem progresso válido
+      if (hasRestoredRef.current) return;
       
       if (savedProgress.last_position > 0 && audio.duration > 0) {
         audio.currentTime = savedProgress.last_position;
-        hasRestored = true;
+        hasRestoredRef.current = true;
         console.log('[AudiobookDetails] ✅ Progresso restaurado para:', savedProgress.last_position, 'segundos');
       }
     };
@@ -206,7 +205,12 @@ const AudiobookDetails = () => {
       audio.addEventListener('loadeddata', restoreProgress);
       return () => audio.removeEventListener('loadeddata', restoreProgress);
     }
-  }, [audioUrl]); // ✅ CRÍTICO: Depende APENAS de audioUrl, não de savedProgress
+  }, [savedProgress, audioUrl]); // ✅ Depende de AMBOS: savedProgress E audioUrl
+
+  // Reset flag quando muda de audiobook
+  useEffect(() => {
+    hasRestoredRef.current = false;
+  }, [id]);
 
   // Auto-save progress every 10 seconds (reduzido de 5 para evitar overhead)
   useEffect(() => {
