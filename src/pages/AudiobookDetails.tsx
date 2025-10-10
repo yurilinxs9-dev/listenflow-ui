@@ -31,6 +31,7 @@ import { useCoverGeneration } from "@/hooks/useCoverGeneration";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserStatus } from "@/hooks/useUserStatus";
 import { AccessDenied } from "@/components/AccessDenied";
+import { useProgress } from "@/hooks/useProgress";
 
 // Audio player with speed control and synchronized subtitles
 const AudiobookDetails = () => {
@@ -57,6 +58,7 @@ const AudiobookDetails = () => {
   const { generateCover, isGenerating: isGeneratingCover } = useCoverGeneration();
   const { user } = useAuth();
   const { isApproved, isPending, isRejected, loading: statusLoading } = useUserStatus();
+  const { progress: savedProgress, updateProgress } = useProgress(id);
 
   useEffect(() => {
     const fetchAudiobookDetails = async () => {
@@ -161,6 +163,12 @@ const AudiobookDetails = () => {
 
     const handleLoadedMetadata = () => {
       setDuration(audio.duration);
+      
+      // Load saved progress
+      if (savedProgress && savedProgress.last_position > 0) {
+        audio.currentTime = savedProgress.last_position;
+        console.log('[AudiobookDetails] Restored progress to:', savedProgress.last_position);
+      }
     };
 
     const handleEnded = () => {
@@ -176,7 +184,48 @@ const AudiobookDetails = () => {
       audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
       audio.removeEventListener('ended', handleEnded);
     };
-  }, [audioUrl, transcriptions, showSubtitles]);
+  }, [audioUrl, transcriptions, showSubtitles, savedProgress]);
+
+  // Auto-save progress every 5 seconds
+  useEffect(() => {
+    if (!id || !user || !audioRef.current || !isPlaying) return;
+
+    const interval = setInterval(() => {
+      const audio = audioRef.current;
+      if (audio && audio.duration > 0) {
+        updateProgress(id, audio.currentTime, audio.duration, audio.currentTime);
+      }
+    }, 5000); // Save every 5 seconds
+
+    return () => clearInterval(interval);
+  }, [id, user, isPlaying, updateProgress]);
+
+  // Save progress on pause and unmount
+  useEffect(() => {
+    const audio = audioRef.current;
+    
+    const handlePause = () => {
+      if (id && user && audio && audio.duration > 0) {
+        updateProgress(id, audio.currentTime, audio.duration, audio.currentTime);
+        console.log('[AudiobookDetails] Progress saved on pause');
+      }
+    };
+
+    if (audio) {
+      audio.addEventListener('pause', handlePause);
+    }
+
+    return () => {
+      if (audio) {
+        audio.removeEventListener('pause', handlePause);
+        // Save on unmount
+        if (id && user && audio.duration > 0) {
+          updateProgress(id, audio.currentTime, audio.duration, audio.currentTime);
+          console.log('[AudiobookDetails] Progress saved on unmount');
+        }
+      }
+    };
+  }, [id, user, updateProgress]);
 
   // Volume and playback rate control
   useEffect(() => {
