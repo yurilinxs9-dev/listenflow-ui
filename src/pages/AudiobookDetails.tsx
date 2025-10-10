@@ -296,22 +296,36 @@ const AudiobookDetails = () => {
   }, [audioUrl]);
 
   const handleProgressChange = (value: number[]) => {
-    if (audioRef.current && duration) {
+    if (audioRef.current && duration && id) {
       const newTime = (value[0] / 100) * duration;
       audioRef.current.currentTime = newTime;
       setProgress(value);
+      
+      // ✅ Salvar imediatamente quando o usuário pular manualmente
+      updateProgress(id, newTime, duration, newTime);
+      console.log('[AudiobookDetails] 💾 Progresso salvo após busca manual:', newTime);
     }
   };
 
   const handleSkipForward = () => {
-    if (audioRef.current) {
-      audioRef.current.currentTime = Math.min(audioRef.current.currentTime + 15, duration);
+    if (audioRef.current && id && duration) {
+      const newTime = Math.min(audioRef.current.currentTime + 15, duration);
+      audioRef.current.currentTime = newTime;
+      
+      // ✅ Salvar imediatamente
+      updateProgress(id, newTime, duration, newTime);
+      console.log('[AudiobookDetails] 💾 Progresso salvo após skip forward');
     }
   };
 
   const handleSkipBack = () => {
-    if (audioRef.current) {
-      audioRef.current.currentTime = Math.max(audioRef.current.currentTime - 15, 0);
+    if (audioRef.current && id && duration) {
+      const newTime = Math.max(audioRef.current.currentTime - 15, 0);
+      audioRef.current.currentTime = newTime;
+      
+      // ✅ Salvar imediatamente
+      updateProgress(id, newTime, duration, newTime);
+      console.log('[AudiobookDetails] 💾 Progresso salvo após skip back');
     }
   };
 
@@ -324,10 +338,14 @@ const AudiobookDetails = () => {
           setAudioUrl(url);
           // Wait for audio to load before seeking
           setTimeout(() => {
-            if (audioRef.current) {
+            if (audioRef.current && id && duration) {
               audioRef.current.currentTime = startTime;
               audioRef.current.play();
               setIsPlaying(true);
+              
+              // ✅ Salvar progresso
+              updateProgress(id, startTime, duration, startTime);
+              console.log('[AudiobookDetails] 💾 Progresso salvo após click no capítulo');
             }
           }, 500);
         }
@@ -337,6 +355,12 @@ const AudiobookDetails = () => {
       if (!isPlaying) {
         audioRef.current.play();
         setIsPlaying(true);
+      }
+      
+      // ✅ Salvar progresso imediatamente
+      if (id && duration) {
+        updateProgress(id, startTime, duration, startTime);
+        console.log('[AudiobookDetails] 💾 Progresso salvo após click no capítulo');
       }
     }
   };
