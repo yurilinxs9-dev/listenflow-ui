@@ -24,6 +24,7 @@ export const HeroCarousel = () => {
   useEffect(() => {
     const fetchTopAudiobooks = async () => {
       try {
+        console.log('[HeroCarousel] Starting fetch of top audiobooks');
         const { data, error } = await supabase
           .from('audiobooks')
           .select('*')
@@ -33,21 +34,28 @@ export const HeroCarousel = () => {
 
         if (error) {
           console.error('[HeroCarousel] Error fetching top audiobooks:', error);
-        } else if (data && data.length > 0) {
-          const transformed = data.map((book: any) => ({
-            id: book.id,
-            title: book.title,
-            author: book.author,
-            description: book.description || "Audiobook disponível para reprodução.",
-            duration: formatDuration(book.duration_seconds),
-            cover_url: book.cover_url,
-            view_count: book.view_count || 0
-          }));
-          setFeaturedBooks(transformed);
+          setLoading(false);
+        } else if (data) {
+          console.log('[HeroCarousel] Fetched audiobooks:', data.length);
+          if (data.length > 0) {
+            const transformed = data.map((book: any) => ({
+              id: book.id,
+              title: book.title,
+              author: book.author,
+              description: book.description || "Audiobook disponível para reprodução.",
+              duration: formatDuration(book.duration_seconds),
+              cover_url: book.cover_url,
+              view_count: book.view_count || 0
+            }));
+            setFeaturedBooks(transformed);
+            console.log('[HeroCarousel] Set featured books:', transformed.length);
+          } else {
+            console.warn('[HeroCarousel] No audiobooks returned from query');
+          }
+          setLoading(false);
         }
       } catch (error) {
         console.error('[HeroCarousel] Unexpected error:', error);
-      } finally {
         setLoading(false);
       }
     };
