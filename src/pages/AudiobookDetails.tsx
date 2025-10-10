@@ -39,6 +39,7 @@ const AudiobookDetails = () => {
   const navigate = useNavigate();
   const audioRef = useRef<HTMLAudioElement>(null);
   const hasRestoredRef = useRef(false); // Flag para garantir restauração única
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null); // Debounce para salvar progresso
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState([0]);
   const [volume, setVolume] = useState([70]);
@@ -242,6 +243,11 @@ const AudiobookDetails = () => {
     }
 
     return () => {
+      // Limpar timeout pendente
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+      
       if (audio) {
         audio.removeEventListener('pause', handlePause);
         // Save on unmount
@@ -301,9 +307,15 @@ const AudiobookDetails = () => {
       audioRef.current.currentTime = newTime;
       setProgress(value);
       
-      // ✅ Salvar imediatamente quando o usuário pular manualmente
-      updateProgress(id, newTime, duration, newTime);
-      console.log('[AudiobookDetails] 💾 Progresso salvo após busca manual:', newTime);
+      // ✅ Debounce: só salva 1 segundo após usuário parar de arrastar
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+      
+      saveTimeoutRef.current = setTimeout(() => {
+        updateProgress(id, newTime, duration, newTime);
+        console.log('[AudiobookDetails] 💾 Progresso salvo após busca manual:', newTime);
+      }, 1000); // Aguarda 1 segundo após parar de arrastar
     }
   };
 
