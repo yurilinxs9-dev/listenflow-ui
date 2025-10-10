@@ -194,7 +194,7 @@ const AudiobookDetails = () => {
   // Restore saved progress when available (ONLY ONCE on load)
   useEffect(() => {
     const audio = audioRef.current;
-    if (!audio || !savedProgress || !audioUrl || hasRestoredRef.current) return;
+    if (!audio || !savedProgress || !streaming.url || hasRestoredRef.current) return;
 
     const restoreProgress = () => {
       // Só restaura se ainda não restaurou E se tem progresso válido
@@ -218,7 +218,7 @@ const AudiobookDetails = () => {
       audio.addEventListener('loadeddata', restoreProgress);
       return () => audio.removeEventListener('loadeddata', restoreProgress);
     }
-  }, [savedProgress, audioUrl]); // ✅ Depende de AMBOS: savedProgress E audioUrl
+  }, [savedProgress, streaming.url]); // ✅ Depende de AMBOS: savedProgress E streaming.url
 
   // Reset flag quando muda de audiobook
   useEffect(() => {
@@ -302,11 +302,11 @@ const AudiobookDetails = () => {
 
   // Auto-play when URL is set
   useEffect(() => {
-    if (audioUrl && audioRef.current && !isPlaying) {
+    if (streaming.url && audioRef.current && !isPlaying) {
       audioRef.current.play();
       setIsPlaying(true);
     }
-  }, [audioUrl]);
+  }, [streaming.url]);
 
   const handleProgressChange = (value: number[]) => {
     if (audioRef.current && duration && id) {
