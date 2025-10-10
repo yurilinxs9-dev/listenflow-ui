@@ -40,6 +40,7 @@ const AudiobookDetails = () => {
   const audioRef = useRef<HTMLAudioElement>(null);
   const hasRestoredRef = useRef(false); // Flag para garantir restauração única
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null); // Debounce para salvar progresso
+  const userWantsToPlayRef = useRef(false); // Flag para controlar quando o usuário realmente quer reproduzir
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState([0]);
   const [volume, setVolume] = useState([70]);
@@ -220,9 +221,11 @@ const AudiobookDetails = () => {
     }
   }, [savedProgress, streaming.url]); // ✅ Depende de AMBOS: savedProgress E streaming.url
 
-  // Reset flag quando muda de audiobook
+  // Reset flags quando muda de audiobook
   useEffect(() => {
     hasRestoredRef.current = false;
+    userWantsToPlayRef.current = false;
+    setIsPlaying(false);
   }, [id]);
 
   // Auto-save progress every 10 seconds (reduzido de 5 para evitar overhead)
@@ -283,7 +286,8 @@ const AudiobookDetails = () => {
     if (!audiobook) return;
 
     if (!streaming.url) {
-      // Streaming URL is being fetched automatically by the hook
+      // Mark that user wants to play
+      userWantsToPlayRef.current = true;
       console.log('[AudiobookDetails] ⏳ Waiting for streaming URL...');
       return;
     }
@@ -293,20 +297,36 @@ const AudiobookDetails = () => {
       if (isPlaying) {
         audioRef.current.pause();
         setIsPlaying(false);
+        userWantsToPlayRef.current = false;
       } else {
-        audioRef.current.play();
-        setIsPlaying(true);
+        try {
+          await audioRef.current.play();
+          setIsPlaying(true);
+          userWantsToPlayRef.current = true;
+        } catch (error) {
+          console.error('[AudiobookDetails] Error playing audio:', error);
+          setIsPlaying(false);
+          userWantsToPlayRef.current = false;
+        }
       }
     }
   };
 
-  // Auto-play when URL is set
+  // Auto-play only when URL is ready AND user explicitly requested play
   useEffect(() => {
-    if (streaming.url && audioRef.current && !isPlaying) {
-      audioRef.current.play();
-      setIsPlaying(true);
+    if (streaming.url && audioRef.current && userWantsToPlayRef.current && !isPlaying) {
+      console.log('[AudiobookDetails] 🎵 Starting playback as requested by user');
+      audioRef.current.play()
+        .then(() => {
+          setIsPlaying(true);
+        })
+        .catch((error) => {
+          console.error('[AudiobookDetails] Error auto-playing:', error);
+          setIsPlaying(false);
+          userWantsToPlayRef.current = false;
+        });
     }
-  }, [streaming.url]);
+  }, [streaming.url, isPlaying]);
 
   const handleProgressChange = (value: number[]) => {
     if (audioRef.current && duration && id) {
@@ -361,8 +381,14 @@ const AudiobookDetails = () => {
 
     audioRef.current.currentTime = startTime;
     if (!isPlaying) {
-      audioRef.current.play();
-      setIsPlaying(true);
+      userWantsToPlayRef.current = true;
+      try {
+        await audioRef.current.play();
+        setIsPlaying(true);
+      } catch (error) {
+        console.error('[AudiobookDetails] Error playing from chapter:', error);
+        userWantsToPlayRef.current = false;
+      }
     }
     
     // Save chapter jump to progress
