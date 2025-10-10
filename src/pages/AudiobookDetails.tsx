@@ -26,12 +26,12 @@ import { PdfViewer } from "@/components/PdfViewer";
 import { useUserSubscription } from "@/hooks/useUserSubscription";
 import { AddToListDialog } from "@/components/AddToListDialog";
 import { supabase } from "@/integrations/supabase/client";
-import { useAudiobookAccess } from "@/hooks/useAudiobookAccess";
 import { useCoverGeneration } from "@/hooks/useCoverGeneration";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserStatus } from "@/hooks/useUserStatus";
 import { AccessDenied } from "@/components/AccessDenied";
 import { useProgress } from "@/hooks/useProgress";
+import { useOptimizedStreaming } from "@/hooks/useOptimizedStreaming";
 
 // Audio player with speed control and synchronized subtitles
 const AudiobookDetails = () => {
@@ -56,11 +56,16 @@ const AudiobookDetails = () => {
   const [showSubtitles, setShowSubtitles] = useState(true);
   const { toggleFavorite, isFavorite, isToggling } = useFavorites();
   const { isPremium: userIsPremium } = useUserSubscription();
-  const { getPresignedUrl, isLoading: isGettingUrl } = useAudiobookAccess();
   const { generateCover, isGenerating: isGeneratingCover } = useCoverGeneration();
   const { user } = useAuth();
   const { isApproved, isPending, isRejected, loading: statusLoading } = useUserStatus();
   const { progress: savedProgress, updateProgress } = useProgress(id);
+  
+  // Streaming otimizado com renovação automática de URLs
+  const streaming = useOptimizedStreaming({ 
+    audiobookId: id || '', 
+    autoRenew: true 
+  });
 
   useEffect(() => {
     const fetchAudiobookDetails = async () => {
@@ -149,6 +154,9 @@ const AudiobookDetails = () => {
     const audio = audioRef.current;
     if (!audio) return;
 
+    // Attach streaming optimization
+    const cleanup = streaming.attachAudioElement(audio);
+
     const handleTimeUpdate = () => {
       setCurrentTime(audio.currentTime);
       const progressPercent = (audio.currentTime / audio.duration) * 100;
@@ -176,11 +184,12 @@ const AudiobookDetails = () => {
     audio.addEventListener('ended', handleEnded);
 
     return () => {
+      cleanup();
       audio.removeEventListener('timeupdate', handleTimeUpdate);
       audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
       audio.removeEventListener('ended', handleEnded);
     };
-  }, [audioUrl, transcriptions, showSubtitles]);
+  }, [streaming.url, transcriptions, showSubtitles, streaming]);
 
   // Restore saved progress when available (ONLY ONCE on load)
   useEffect(() => {
@@ -273,25 +282,20 @@ const AudiobookDetails = () => {
   const handlePlayPause = async () => {
     if (!audiobook) return;
 
-    if (!audioUrl) {
-      // Need to get presigned URL first
-      console.log('[AudiobookDetails] Getting presigned URL...');
-      const url = await getPresignedUrl(audiobook.id);
-      if (url) {
-        console.log('[AudiobookDetails] Got presigned URL, setting audio source');
-        setAudioUrl(url);
-        // Audio will start playing after URL is set via useEffect
-      }
-    } else {
-      // Toggle play/pause
-      if (audioRef.current) {
-        if (isPlaying) {
-          audioRef.current.pause();
-          setIsPlaying(false);
-        } else {
-          audioRef.current.play();
-          setIsPlaying(true);
-        }
+    if (!streaming.url) {
+      // Streaming URL is being fetched automatically by the hook
+      console.log('[AudiobookDetails] ⏳ Waiting for streaming URL...');
+      return;
+    }
+
+    // Toggle play/pause
+    if (audioRef.current) {
+      if (isPlaying) {
+        audioRef.current.pause();
+        setIsPlaying(false);
+      } else {
+        audioRef.current.play();
+        setIsPlaying(true);
       }
     }
   };
@@ -346,37 +350,25 @@ const AudiobookDetails = () => {
 
   const handleChapterClick = async (startTime: number) => {
     if (!audioRef.current) {
-      // Need to load audio first
-      if (!audioUrl && audiobook) {
-        const url = await getPresignedUrl(audiobook.id);
-        if (url) {
-          setAudioUrl(url);
-          // Wait for audio to load before seeking
-          setTimeout(() => {
-            if (audioRef.current && id && duration) {
-              audioRef.current.currentTime = startTime;
-              audioRef.current.play();
-              setIsPlaying(true);
-              
-              // ✅ Salvar progresso
-              updateProgress(id, startTime, duration, startTime);
-              console.log('[AudiobookDetails] 💾 Progresso salvo após click no capítulo');
-            }
-          }, 500);
-        }
-      }
-    } else {
-      audioRef.current.currentTime = startTime;
-      if (!isPlaying) {
-        audioRef.current.play();
-        setIsPlaying(true);
-      }
-      
-      // ✅ Salvar progresso imediatamente
-      if (id && duration) {
-        updateProgress(id, startTime, duration, startTime);
-        console.log('[AudiobookDetails] 💾 Progresso salvo após click no capítulo');
-      }
+      console.log('[AudiobookDetails] ⏳ Audio not ready yet');
+      return;
+    }
+
+    if (!streaming.url) {
+      console.log('[AudiobookDetails] ⏳ Waiting for streaming URL...');
+      return;
+    }
+
+    audioRef.current.currentTime = startTime;
+    if (!isPlaying) {
+      audioRef.current.play();
+      setIsPlaying(true);
+    }
+    
+    // Save chapter jump to progress
+    if (id && duration) {
+      updateProgress(id, startTime, duration, startTime);
+      console.log('[AudiobookDetails] 📖 Jumped to chapter at', startTime);
     }
   };
 
@@ -506,10 +498,12 @@ const AudiobookDetails = () => {
                 <Button
                   className="flex-1 gradient-hero border-0 glow-effect h-12"
                   onClick={handlePlayPause}
-                  disabled={isGettingUrl}
+                  disabled={streaming.isLoading || streaming.buffering}
                 >
-                  {isGettingUrl ? (
+                  {streaming.isLoading ? (
                     <>Carregando...</>
+                  ) : streaming.buffering ? (
+                    <>Buffering...</>
                   ) : isPlaying ? (
                     <>
                       <Pause className="w-5 h-5 mr-2" />
@@ -614,7 +608,7 @@ const AudiobookDetails = () => {
                         key={chapter.id}
                         onClick={() => handleChapterClick(chapter.start_time)}
                         className="w-full text-left p-3 rounded-lg hover:bg-secondary transition-colors flex items-center justify-between group"
-                        disabled={isGettingUrl}
+                        disabled={streaming.isLoading || streaming.buffering}
                       >
                         <span className="group-hover:text-primary transition-colors">
                           {chapter.chapter_number}. {chapter.title}
@@ -639,16 +633,16 @@ const AudiobookDetails = () => {
       </main>
 
       {/* Audio element with progressive streaming optimization */}
-      {audioUrl && (
+      {streaming.url && (
         <audio
           ref={audioRef}
-          src={audioUrl}
+          src={streaming.url}
           preload="auto"
           crossOrigin="anonymous"
-          onLoadedMetadata={() => console.log('[Player] Metadata loaded - ready to play')}
-          onCanPlay={() => console.log('[Player] Can play - buffer sufficient')}
-          onWaiting={() => console.log('[Player] Waiting for buffer...')}
-          onCanPlayThrough={() => console.log('[Player] Can play through - fully buffered')}
+          onLoadedMetadata={() => console.log('[Player] ✅ Metadata loaded - ready to play')}
+          onCanPlay={() => console.log('[Player] ✅ Can play - buffer sufficient')}
+          onWaiting={() => console.log('[Player] ⏳ Waiting for buffer...')}
+          onCanPlayThrough={() => console.log('[Player] ✅ Can play through - fully buffered')}
         />
       )}
 
@@ -707,9 +701,9 @@ const AudiobookDetails = () => {
                   size="icon"
                   className="gradient-hero border-0 w-12 h-12"
                   onClick={handlePlayPause}
-                  disabled={isGettingUrl}
+                  disabled={streaming.isLoading || streaming.buffering}
                 >
-                  {isGettingUrl ? (
+                  {streaming.isLoading || streaming.buffering ? (
                     <span className="text-xs">...</span>
                   ) : isPlaying ? (
                     <Pause className="w-5 h-5" />
