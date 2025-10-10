@@ -64,17 +64,23 @@ export const useOptimizedStreaming = ({ audiobookId, autoRenew = true, bufferSiz
 
       // Schedule automatic renewal before expiration
       if (autoRenew && data.expiresIn) {
-        const renewalTime = (data.expiresIn * 1000) - (5 * 60 * 1000); // Renew 5 minutes before expiration
-        console.log('[OptimizedStreaming] ⏰ Scheduled renewal in', renewalTime / 1000, 'seconds');
+        // Only renew if there's at least 10 minutes until expiration
+        const renewalTime = (data.expiresIn * 1000) - (2 * 60 * 1000); // Renew 2 minutes before expiration
         
-        if (renewalTimerRef.current) {
-          clearTimeout(renewalTimerRef.current);
+        if (renewalTime > 0) {
+          console.log('[OptimizedStreaming] ⏰ Scheduled renewal in', Math.floor(renewalTime / 1000), 'seconds');
+          
+          if (renewalTimerRef.current) {
+            clearTimeout(renewalTimerRef.current);
+          }
+          
+          renewalTimerRef.current = setTimeout(() => {
+            console.log('[OptimizedStreaming] 🔄 Auto-renewing URL...');
+            fetchStreamingUrl();
+          }, renewalTime);
+        } else {
+          console.log('[OptimizedStreaming] ⚠️ URL expires too soon, no renewal scheduled');
         }
-        
-        renewalTimerRef.current = setTimeout(() => {
-          console.log('[OptimizedStreaming] 🔄 Auto-renewing URL...');
-          fetchStreamingUrl();
-        }, renewalTime);
       }
 
       return data.url;
