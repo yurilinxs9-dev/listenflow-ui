@@ -86,12 +86,17 @@ serve(async (req) => {
     }
 
     // SEGURANÇA: Verificar se usuário tem acesso ao audiobook
-    // Lógica server-side que não pode ser burlada
-    if (!audiobook.is_global && audiobook.user_id !== user.id) {
+    // Permitir acesso se:
+    // 1. O audiobook é global (is_global = true) 
+    // 2. O usuário é o dono (user_id = audiobook.user_id)
+    const hasAccess = audiobook.is_global || audiobook.user_id === user.id;
+    
+    if (!hasAccess) {
       console.warn('[Presigned URL] Unauthorized access attempt:', { 
         user: user.id, 
         audiobook: audiobookId,
-        owner: audiobook.user_id
+        owner: audiobook.user_id,
+        is_global: audiobook.is_global
       });
       
       // Log de auditoria para tentativa de acesso não autorizado
@@ -104,15 +109,18 @@ serve(async (req) => {
         details: { 
           audiobook_id: audiobookId,
           owner_id: audiobook.user_id,
+          is_global: audiobook.is_global,
           ip: ipAddress
         }
       });
       
       return new Response(
-        JSON.stringify({ error: 'Você não tem permissão para acessar este audiobook.' }),
+        JSON.stringify({ error: 'Este audiobook é privado. Apenas o proprietário pode acessá-lo.' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+    
+    console.log(`[Presigned URL] Access granted - Global: ${audiobook.is_global}, Owner: ${audiobook.user_id === user.id}`);
 
     // Check if audiobook requires login
     if (audiobook.require_login) {
