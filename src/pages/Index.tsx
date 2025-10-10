@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState } from "react";
 import { useUserStatus } from "@/hooks/useUserStatus";
 import { AccessDenied } from "@/components/AccessDenied";
+import { useContinueListening } from "@/hooks/useContinueListening";
 
 const Index = () => {
   const [myAudiobooksByCategory, setMyAudiobooksByCategory] = useState<Record<string, any[]>>({});
@@ -13,6 +14,7 @@ const Index = () => {
   const [topAudiobookIds, setTopAudiobookIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const { isApproved, isPending, isRejected, loading: statusLoading } = useUserStatus();
+  const { audiobooks: continueListening, loading: continueLoading } = useContinueListening();
 
   useEffect(() => {
     const fetchAudiobooks = async () => {
@@ -133,6 +135,15 @@ const Index = () => {
             </div>
           ) : (
             <>
+              {/* Continue Escutando */}
+              {!continueLoading && continueListening.length > 0 && (
+                <CategoryRow 
+                  title="▶️ Continue Escutando" 
+                  audiobooks={continueListening}
+                  topAudiobookIds={topAudiobookIds}
+                />
+              )}
+              
               {/* Audiobooks em Destaque */}
               {featuredAudiobooks.length > 0 && (
                 <CategoryRow 
