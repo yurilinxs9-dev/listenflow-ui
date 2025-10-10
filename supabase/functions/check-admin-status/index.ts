@@ -83,13 +83,16 @@ serve(async (req) => {
       );
     }
 
-    // CRÍTICO: Usar função de banco de dados com SECURITY DEFINER
-    // que bypassa RLS e previne manipulação do cliente
-    const { data: hasAdminRole, error: roleError } = await supabaseClient
-      .rpc('has_role', {
-        _user_id: user.id,
-        _role: 'admin'
-      });
+    // CRÍTICO: Verificar role de admin diretamente na tabela user_roles
+    // usando Service Role Key que bypassa RLS
+    const { data: roleData, error: roleError } = await supabaseClient
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id)
+      .eq('role', 'admin')
+      .maybeSingle();
+    
+    const hasAdminRole = !!roleData;
 
     if (roleError) {
       console.error('[check-admin-status] Error checking role:', roleError);
