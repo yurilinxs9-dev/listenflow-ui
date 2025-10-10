@@ -3,6 +3,7 @@ import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
+import { loginSchema, signUpSchema, checkClientRateLimit } from '@/lib/validation';
 
 interface AuthContextType {
   user: User | null;
@@ -43,12 +44,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signIn = async (email: string, password: string) => {
     try {
+      // SEGURANÇA: Rate limiting do lado do cliente
+      if (!checkClientRateLimit(`login_${email}`, 5, 60000)) {
+        throw new Error('Muitas tentativas de login. Aguarde 1 minuto.');
+      }
+
+      // SEGURANÇA: Validação rigorosa com Zod
+      const validated = loginSchema.parse({ email, password });
+
       const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+        email: validated.email,
+        password: validated.password,
       });
 
-      if (error) throw error;
+      if (error) {
+        // Mensagens de erro genéricas para prevenir enumeração de usuários
+        if (error.message.includes('Invalid login credentials')) {
+          throw new Error('Email ou senha incorretos');
+        }
+        throw error;
+      }
 
       toast({
         title: "Login realizado!",
@@ -68,15 +83,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signUp = async (email: string, password: string, displayName: string) => {
     try {
+      // SEGURANÇA: Rate limiting do lado do cliente
+      if (!checkClientRateLimit(`signup_${email}`, 3, 300000)) {
+        throw new Error('Muitas tentativas de registro. Aguarde 5 minutos.');
+      }
+
+      // SEGURANÇA: Validação rigorosa com Zod
+      const validated = signUpSchema.parse({ email, password, displayName });
+      
       const redirectUrl = `${window.location.origin}/`;
       
       const { error } = await supabase.auth.signUp({
-        email,
-        password,
+        email: validated.email,
+        password: validated.password,
         options: {
           emailRedirectTo: redirectUrl,
           data: {
-            display_name: displayName,
+            display_name: validated.displayName,
           },
         },
       });
