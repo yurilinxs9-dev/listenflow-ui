@@ -26,6 +26,8 @@ export const useProgress = (audiobookId?: string) => {
   const fetchProgress = async () => {
     if (!user || !audiobookId) return;
 
+    console.log('[useProgress] 🔍 Buscando progresso para audiobook:', audiobookId);
+    
     try {
       const { data, error } = await supabase
         .from('audiobook_progress')
@@ -36,9 +38,15 @@ export const useProgress = (audiobookId?: string) => {
 
       if (error) throw error;
 
+      if (data) {
+        console.log('[useProgress] ✅ Progresso encontrado:', data.last_position, 'segundos');
+      } else {
+        console.log('[useProgress] ℹ️ Nenhum progresso salvo anteriormente');
+      }
+
       setProgress(data);
     } catch (error) {
-      console.error('Error fetching progress:', error);
+      console.error('[useProgress] ❌ Erro ao buscar progresso:', error);
     } finally {
       setLoading(false);
     }
@@ -51,6 +59,8 @@ export const useProgress = (audiobookId?: string) => {
     lastPosition: number
   ) => {
     if (!user) return;
+
+    console.log('[useProgress] 💾 Salvando progresso:', lastPosition.toFixed(2), 'segundos');
 
     try {
       const { error } = await supabase
@@ -71,9 +81,10 @@ export const useProgress = (audiobookId?: string) => {
 
       if (error) throw error;
 
+      console.log('[useProgress] ✅ Progresso salvo com sucesso');
       await fetchProgress();
     } catch (error) {
-      console.error('Error updating progress:', error);
+      console.error('[useProgress] ❌ Erro ao salvar progresso:', error);
     }
   };
 

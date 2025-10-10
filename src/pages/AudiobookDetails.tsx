@@ -163,12 +163,6 @@ const AudiobookDetails = () => {
 
     const handleLoadedMetadata = () => {
       setDuration(audio.duration);
-      
-      // Load saved progress
-      if (savedProgress && savedProgress.last_position > 0) {
-        audio.currentTime = savedProgress.last_position;
-        console.log('[AudiobookDetails] Restored progress to:', savedProgress.last_position);
-      }
     };
 
     const handleEnded = () => {
@@ -184,7 +178,30 @@ const AudiobookDetails = () => {
       audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
       audio.removeEventListener('ended', handleEnded);
     };
-  }, [audioUrl, transcriptions, showSubtitles, savedProgress]);
+  }, [audioUrl, transcriptions, showSubtitles]);
+
+  // Restore saved progress when available
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio || !savedProgress || !audioUrl) return;
+
+    // Wait for audio to be ready
+    const restoreProgress = () => {
+      if (savedProgress.last_position > 0 && audio.duration > 0) {
+        audio.currentTime = savedProgress.last_position;
+        console.log('[AudiobookDetails] ✅ Progresso restaurado para:', savedProgress.last_position, 'segundos');
+      }
+    };
+
+    if (audio.readyState >= 2) {
+      // Audio is ready (HAVE_CURRENT_DATA or higher)
+      restoreProgress();
+    } else {
+      // Wait for audio to be ready
+      audio.addEventListener('loadeddata', restoreProgress);
+      return () => audio.removeEventListener('loadeddata', restoreProgress);
+    }
+  }, [savedProgress, audioUrl]);
 
   // Auto-save progress every 5 seconds
   useEffect(() => {
