@@ -4,6 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { useUserStatus } from "@/hooks/useUserStatus";
+import { AccessDenied } from "@/components/AccessDenied";
 
 const Categories = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -12,6 +14,7 @@ const Categories = () => {
   const [audiobooks, setAudiobooks] = useState<any[]>([]);
   const [genres, setGenres] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const { isApproved, isPending, isRejected, loading: statusLoading } = useUserStatus();
 
   useEffect(() => {
     fetchAudiobooks();

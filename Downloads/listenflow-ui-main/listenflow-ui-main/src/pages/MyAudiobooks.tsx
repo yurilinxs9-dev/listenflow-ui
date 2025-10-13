@@ -9,6 +9,8 @@ import { Trash2, Music, Sparkles } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCoverGeneration } from "@/hooks/useCoverGeneration";
+import { useUserStatus } from "@/hooks/useUserStatus";
+import { AccessDenied } from "@/components/AccessDenied";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -40,6 +42,7 @@ export default function MyAudiobooks() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [generatingCoverId, setGeneratingCoverId] = useState<string | null>(null);
   const { generateCover } = useCoverGeneration();
+  const { isApproved, isPending, isRejected, loading: statusLoading } = useUserStatus();
 
   useEffect(() => {
     if (!user) {
@@ -123,6 +126,11 @@ export default function MyAudiobooks() {
     const minutes = Math.floor((seconds % 3600) / 60);
     return `${hours}h ${minutes}m`;
   };
+
+  // SEGURANÇA: Bloquear acesso de usuários não aprovados
+  if (!statusLoading && (isPending || isRejected)) {
+    return <AccessDenied status={isPending ? 'pending' : 'rejected'} />;
+  }
 
   return (
     <div className="min-h-screen bg-background">

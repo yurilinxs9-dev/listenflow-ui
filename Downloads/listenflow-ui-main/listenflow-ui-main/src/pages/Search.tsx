@@ -6,6 +6,8 @@ import { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useUserStatus } from "@/hooks/useUserStatus";
+import { AccessDenied } from "@/components/AccessDenied";
 
 interface Audiobook {
   id: string;
@@ -22,6 +24,7 @@ const Search = () => {
   const [searchQuery, setSearchQuery] = useState(searchParams.get("q") || "");
   const [audiobooks, setAudiobooks] = useState<Audiobook[]>([]);
   const [loading, setLoading] = useState(false);
+  const { isApproved, isPending, isRejected, loading: statusLoading } = useUserStatus();
 
   useEffect(() => {
     setSearchQuery(searchParams.get("q") || "");

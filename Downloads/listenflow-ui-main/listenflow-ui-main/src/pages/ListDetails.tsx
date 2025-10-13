@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button';
 import { useUserLists } from '@/hooks/useUserLists';
 import { AudiobookCard } from '@/components/AudiobookCard';
 import { supabase } from '@/integrations/supabase/client';
+import { useUserStatus } from '@/hooks/useUserStatus';
+import { AccessDenied } from '@/components/AccessDenied';
 
 export default function ListDetails() {
   const { listId } = useParams<{ listId: string }>();
@@ -14,6 +16,7 @@ export default function ListDetails() {
   const [listItems, setListItems] = useState<any[]>([]);
   const [audiobooks, setAudiobooks] = useState<Record<string, any>>({});
   const [itemsLoading, setItemsLoading] = useState(true);
+  const { isApproved, isPending, isRejected, loading: statusLoading } = useUserStatus();
 
   const currentList = lists.find(l => l.id === listId);
 
@@ -97,6 +100,11 @@ export default function ListDetails() {
         </main>
       </div>
     );
+  }
+
+  // SEGURANÇA: Bloquear acesso de usuários não aprovados
+  if (!statusLoading && (isPending || isRejected)) {
+    return <AccessDenied status={isPending ? 'pending' : 'rejected'} />;
   }
 
   return (

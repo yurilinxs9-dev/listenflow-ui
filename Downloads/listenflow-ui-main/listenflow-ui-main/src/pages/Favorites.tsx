@@ -5,6 +5,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useUserStatus } from "@/hooks/useUserStatus";
+import { AccessDenied } from "@/components/AccessDenied";
 
 const Favorites = () => {
   const { user } = useAuth();
@@ -12,6 +14,7 @@ const Favorites = () => {
   const navigate = useNavigate();
   const [favoriteAudiobooks, setFavoriteAudiobooks] = useState<any[]>([]);
   const [loadingBooks, setLoadingBooks] = useState(true);
+  const { isApproved, isPending, isRejected, loading: statusLoading } = useUserStatus();
 
   useEffect(() => {
     if (!user && !loading) {
@@ -78,6 +81,11 @@ const Favorites = () => {
         </main>
       </div>
     );
+  }
+
+  // SEGURANÇA: Bloquear acesso de usuários não aprovados
+  if (!statusLoading && (isPending || isRejected)) {
+    return <AccessDenied status={isPending ? 'pending' : 'rejected'} />;
   }
 
   return (

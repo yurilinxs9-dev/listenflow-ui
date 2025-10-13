@@ -27,11 +27,14 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useUserLists } from '@/hooks/useUserLists';
 import { useAuth } from '@/hooks/useAuth';
+import { useUserStatus } from '@/hooks/useUserStatus';
+import { AccessDenied } from '@/components/AccessDenied';
 
 export default function MyLists() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { lists, loading, createList, updateList, deleteList } = useUserLists();
+  const { isApproved, isPending, isRejected, loading: statusLoading } = useUserStatus();
   
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -94,6 +97,11 @@ export default function MyLists() {
         </main>
       </div>
     );
+  }
+
+  // SEGURANÇA: Bloquear acesso de usuários não aprovados
+  if (!statusLoading && (isPending || isRejected)) {
+    return <AccessDenied status={isPending ? 'pending' : 'rejected'} />;
   }
 
   return (
