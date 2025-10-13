@@ -82,6 +82,71 @@ serve(async (req) => {
       );
     }
 
+    // SEGURANÇA CRÍTICA: Verificar STATUS antes de verificar role
+    // Mesmo com role 'admin', usuário DEVE estar aprovado
+    const { data: profile, error: profileError } = await supabaseClient
+      .from('profiles')
+      .select('status')
+      .eq('id', user.id)
+      .single();
+
+    if (profileError || !profile) {
+      console.error('[check-admin-status] Profile not found:', profileError);
+      await supabaseClient.from('security_audit_logs').insert({
+        user_id: user.id,
+        action: 'admin_check_no_profile',
+        table_name: 'profiles',
+        suspicious: true,
+        details: { 
+          error: 'profile_not_found',
+          ip: ipAddress
+        }
+      });
+      
+      return new Response(
+        JSON.stringify({ 
+          isAdmin: false,
+          error: 'Perfil não encontrado' 
+        }),
+        {
+          headers: secureHeaders,
+          status: 403,
+        }
+      );
+    }
+
+    // BLOQUEIO CRÍTICO: Admin DEVE estar aprovado
+    if (profile.status !== 'approved') {
+      console.warn('[check-admin-status] SECURITY: Admin attempt with non-approved status:', {
+        user_id: user.id,
+        status: profile.status
+      });
+      
+      await supabaseClient.from('security_audit_logs').insert({
+        user_id: user.id,
+        action: 'admin_access_denied_not_approved',
+        table_name: 'user_roles',
+        suspicious: true,
+        details: { 
+          status: profile.status,
+          ip: ipAddress,
+          timestamp: new Date().toISOString(),
+          severity: 'CRITICAL'
+        }
+      });
+      
+      return new Response(
+        JSON.stringify({ 
+          isAdmin: false,
+          error: 'Acesso negado. Conta não aprovada.' 
+        }),
+        {
+          headers: secureHeaders,
+          status: 403,
+        }
+      );
+    }
+
     // CRÍTICO: Verificar role de admin diretamente na tabela user_roles
     // usando Service Role Key que bypassa RLS
     const { data: roleData, error: roleError } = await supabaseClient
@@ -107,7 +172,10 @@ serve(async (req) => {
       );
     }
 
-    console.log('[check-admin-status] Admin check result:', hasAdminRole);
+    console.log('[check-admin-status] Admin check result:', { 
+      hasRole: hasAdminRole, 
+      isApproved: profile.status === 'approved' 
+    });
 
     // Log de auditoria para tentativas de acesso admin
     await supabaseClient.from('security_audit_logs').insert({
@@ -141,7 +209,7 @@ serve(async (req) => {
         error: 'Erro interno do servidor' 
       }),
       {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: secureHeaders,
         status: 500,
       }
     );
