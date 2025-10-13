@@ -100,17 +100,22 @@ export default function AdminUsers() {
 
       if (error) throw error;
       
-      // Log de auditoria no servidor
-      await supabase.from('security_audit_logs').insert({
-        user_id: user?.id,
-        action: 'user_status_updated',
-        table_name: 'profiles',
-        record_id: userId,
-        details: { 
-          new_status: newStatus,
-          target_user_id: userId,
-        }
-      }).catch(err => console.error('[Audit] Erro ao registrar log:', err));
+      // Log de auditoria no servidor (não bloqueia se falhar)
+      try {
+        await supabase.from('security_audit_logs').insert({
+          user_id: user?.id,
+          action: 'user_status_updated',
+          table_name: 'profiles',
+          record_id: userId,
+          details: { 
+            new_status: newStatus,
+            target_user_id: userId,
+          }
+        });
+      } catch (auditError) {
+        console.error('[Audit] Erro ao registrar log:', auditError);
+        // Não bloqueia a operação se log falhar
+      }
 
       toast({
         title: "Sucesso",
