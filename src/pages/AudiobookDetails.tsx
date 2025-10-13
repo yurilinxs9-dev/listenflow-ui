@@ -62,10 +62,12 @@ const AudiobookDetails = () => {
   const { isApproved, isPending, isRejected, loading: statusLoading } = useUserStatus();
   const { progress: savedProgress, updateProgress } = useProgress(id);
   
-  // Streaming otimizado com renovação automática de URLs
+  // Streaming otimizado com cache agressivo e prefetch
   const streaming = useOptimizedStreaming({ 
     audiobookId: id || '', 
-    autoRenew: true 
+    autoRenew: true,
+    enableCache: true,  // ✅ Cache ativado
+    prefetch: true      // ✅ Prefetch ativado
   });
 
   useEffect(() => {
@@ -658,17 +660,29 @@ const AudiobookDetails = () => {
         </div>
       </main>
 
-      {/* Audio element with progressive streaming optimization */}
+      {/* Audio element with aggressive optimization */}
       {streaming.url && (
         <audio
           ref={audioRef}
           src={streaming.url}
           preload="auto"
           crossOrigin="anonymous"
-          onLoadedMetadata={() => console.log('[Player] ✅ Metadata loaded - ready to play')}
-          onCanPlay={() => console.log('[Player] ✅ Can play - buffer sufficient')}
-          onWaiting={() => console.log('[Player] ⏳ Waiting for buffer...')}
-          onCanPlayThrough={() => console.log('[Player] ✅ Can play through - fully buffered')}
+          playsInline
+          onLoadedMetadata={() => console.log('[Player] ✅ Metadata carregado - pronto para tocar')}
+          onCanPlay={() => console.log('[Player] ✅ Buffer suficiente')}
+          onWaiting={() => console.log('[Player] ⏳ Aguardando buffer...')}
+          onCanPlayThrough={() => console.log('[Player] ✅ Totalmente em buffer')}
+          onLoadStart={() => console.log('[Player] 🔄 Iniciando carregamento')}
+          onProgress={() => {
+            const audio = audioRef.current;
+            if (audio && audio.buffered.length > 0) {
+              const bufferedEnd = audio.buffered.end(audio.buffered.length - 1);
+              const bufferedPercent = (bufferedEnd / audio.duration) * 100;
+              if (bufferedPercent > 10) {
+                console.log('[Player] 📊 Buffered:', Math.round(bufferedPercent) + '%');
+              }
+            }
+          }}
         />
       )}
 
@@ -731,7 +745,7 @@ const AudiobookDetails = () => {
 
                 <Button
                   size="icon"
-                  className="gradient-hero border-0 w-10 h-10 sm:w-12 sm:h-12"
+                  className="gradient-hero border-0 w-10 h-10 sm:w-12 sm:h-12 relative"
                   onClick={handlePlayPause}
                   disabled={streaming.isLoading || streaming.buffering}
                 >
@@ -741,6 +755,10 @@ const AudiobookDetails = () => {
                     <Pause className="w-4 h-4 sm:w-5 sm:h-5" />
                   ) : (
                     <Play className="w-4 h-4 sm:w-5 sm:h-5" fill="currentColor" />
+                  )}
+                  {/* Indicador de cache */}
+                  {streaming.cached && !streaming.isLoading && (
+                    <span className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full animate-pulse" title="Carregamento instantâneo (cache)" />
                   )}
                 </Button>
 
