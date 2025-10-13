@@ -661,6 +661,16 @@ export type Database = {
         Args: { audiobook_id: string }
         Returns: undefined
       }
+      log_security_event: {
+        Args: {
+          p_action: string
+          p_details?: Json
+          p_record_id?: string
+          p_suspicious?: boolean
+          p_table_name: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "admin" | "user"
