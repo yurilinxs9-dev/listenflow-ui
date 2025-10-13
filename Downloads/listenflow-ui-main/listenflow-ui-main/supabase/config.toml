@@ -1,0 +1,25 @@
+project_id = "vpehklrzzgklskapnfmk"
+
+[functions.process-audiobook-metadata]
+verify_jwt = false
+
+[functions.generate-audiobook-cover]
+verify_jwt = false
+
+[functions.get-audiobook-presigned-url]
+verify_jwt = true
+
+[functions.generate-book-reviews]
+verify_jwt = false
+
+[functions.update-book-cover]
+verify_jwt = true
+
+[functions.admin-generate-presigned-upload]
+verify_jwt = true
+
+[functions.admin-complete-upload]
+verify_jwt = true
+
+[functions.check-admin-status]
+verify_jwt = true

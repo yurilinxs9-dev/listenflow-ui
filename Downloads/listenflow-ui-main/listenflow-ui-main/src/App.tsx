@@ -1,0 +1,56 @@
+import { Toaster } from "@/components/ui/toaster";
+import { Toaster as Sonner } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { AuthProvider } from "@/hooks/useAuth";
+import Index from "./pages/Index";
+import AudiobookDetails from "./pages/AudiobookDetails";
+import Auth from "./pages/Auth";
+import Favorites from "./pages/Favorites";
+import NotFound from "./pages/NotFound";
+import MyLists from "./pages/MyLists";
+import ListDetails from "./pages/ListDetails";
+import Search from "./pages/Search";
+import UploadAudiobook from "./pages/UploadAudiobook";
+import MyAudiobooks from "./pages/MyAudiobooks";
+import AdminDashboard from "./pages/AdminDashboard";
+import AdminAudiobooks from "./pages/AdminAudiobooks";
+import AdminUsers from "./pages/AdminUsers";
+import UpdateCover from "./pages/UpdateCover";
+import Categories from "./pages/Categories";
+
+const queryClient = new QueryClient();
+
+const App = () => (
+  <QueryClientProvider client={queryClient}>
+    <TooltipProvider>
+      <Toaster />
+      <Sonner />
+      <BrowserRouter>
+        <AuthProvider>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/audiobook/:id" element={<AudiobookDetails />} />
+            <Route path="/auth" element={<Auth />} />
+            <Route path="/favorites" element={<Favorites />} />
+            <Route path="/lists" element={<MyLists />} />
+            <Route path="/lists/:listId" element={<ListDetails />} />
+            <Route path="/search" element={<Search />} />
+            <Route path="/categories" element={<Categories />} />
+            <Route path="/upload" element={<UploadAudiobook />} />
+            <Route path="/my-audiobooks" element={<MyAudiobooks />} />
+            <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/admin/audiobooks" element={<AdminAudiobooks />} />
+            <Route path="/admin/users" element={<AdminUsers />} />
+            <Route path="/update-cover" element={<UpdateCover />} />
+            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </AuthProvider>
+      </BrowserRouter>
+    </TooltipProvider>
+  </QueryClientProvider>
+);
+
+export default App;
