@@ -19,11 +19,14 @@ import {
   Gauge,
   Captions,
 } from "lucide-react";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { useFavorites } from "@/hooks/useFavorites";
-import { ReviewSection } from "@/components/ReviewSection";
-import { PdfViewer } from "@/components/PdfViewer";
 import { useUserSubscription } from "@/hooks/useUserSubscription";
+
+// OTIMIZAÇÃO: Lazy loading de componentes pesados
+const ReviewSection = lazy(() => import("@/components/ReviewSection").then(m => ({ default: m.ReviewSection })));
+const PdfViewer = lazy(() => import("@/components/PdfViewer").then(m => ({ default: m.PdfViewer })));
+const NetworkQualityIndicator = lazy(() => import("@/components/NetworkQualityIndicator").then(m => ({ default: m.NetworkQualityIndicator })));
 import { AddToListDialog } from "@/components/AddToListDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useCoverGeneration } from "@/hooks/useCoverGeneration";
@@ -31,7 +34,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useUserStatus } from "@/hooks/useUserStatus";
 import { AccessDenied } from "@/components/AccessDenied";
 import { useProgress } from "@/hooks/useProgress";
-import { useOptimizedStreaming } from "@/hooks/useOptimizedStreaming";
+import { useAdaptiveStreaming } from "@/hooks/useAdaptiveStreaming";
+import { getOptimalStreamingConfig } from "@/lib/networkDetection";
 
 // Audio player with speed control and synchronized subtitles
 const AudiobookDetails = () => {
@@ -62,12 +66,13 @@ const AudiobookDetails = () => {
   const { isApproved, isPending, isRejected, loading: statusLoading } = useUserStatus();
   const { progress: savedProgress, updateProgress } = useProgress(id);
   
-  // Streaming otimizado com cache agressivo e prefetch
-  const streaming = useOptimizedStreaming({ 
-    audiobookId: id || '', 
-    autoRenew: true,
-    enableCache: true,  // ✅ Cache ativado
-    prefetch: true      // ✅ Prefetch ativado
+  // OTIMIZAÇÃO: Streaming adaptativo com detecção automática de rede/dispositivo
+  const streaming = useAdaptiveStreaming({ 
+    audiobookId: id || '',
+    onNetworkChange: (quality) => {
+      console.log('[AudiobookDetails] 🌐 Rede mudou para:', quality);
+      // Pode mostrar toast informando mudança de qualidade
+    }
   });
 
   useEffect(() => {
@@ -660,28 +665,38 @@ const AudiobookDetails = () => {
         </div>
       </main>
 
-      {/* Audio element with aggressive optimization */}
+      {/* Audio element with ADAPTIVE optimization based on network/device */}
       {streaming.url && (
         <audio
-          ref={audioRef}
+          ref={(el) => {
+            if (el) {
+              audioRef.current = el;
+              streaming.attachAudioElement(el);
+            }
+          }}
           src={streaming.url}
-          preload="auto"
+          preload={streaming.getPreloadMode()} // ← ADAPTATIVO!
           crossOrigin="anonymous"
           playsInline
-          onLoadedMetadata={() => console.log('[Player] ✅ Metadata carregado - pronto para tocar')}
+          onLoadedMetadata={() => {
+            console.log('[Player] ✅ Metadata carregado');
+            console.log('[Player] 📊 Qualidade:', streaming.networkQuality);
+            console.log('[Player] 📱 Dispositivo:', streaming.deviceType);
+          }}
           onCanPlay={() => console.log('[Player] ✅ Buffer suficiente')}
-          onWaiting={() => console.log('[Player] ⏳ Aguardando buffer...')}
-          onCanPlayThrough={() => console.log('[Player] ✅ Totalmente em buffer')}
-          onLoadStart={() => console.log('[Player] 🔄 Iniciando carregamento')}
-          onProgress={() => {
-            const audio = audioRef.current;
-            if (audio && audio.buffered.length > 0) {
-              const bufferedEnd = audio.buffered.end(audio.buffered.length - 1);
-              const bufferedPercent = (bufferedEnd / audio.duration) * 100;
-              if (bufferedPercent > 10) {
-                console.log('[Player] 📊 Buffered:', Math.round(bufferedPercent) + '%');
-              }
+          onWaiting={() => {
+            console.log('[Player] ⏳ Aguardando buffer...');
+            if (streaming.networkQuality === 'poor') {
+              console.warn('[Player] ⚠️ Conexão lenta detectada');
             }
+          }}
+          onCanPlayThrough={() => console.log('[Player] ✅ Totalmente bufferizado')}
+          onLoadStart={() => console.log('[Player] 🔄 Carregando...')}
+          onStalled={() => {
+            console.error('[Player] 🔴 TRAVOU - tentando recovery...');
+          }}
+          onSuspend={() => {
+            console.log('[Player] ⏸️ Download pausado pelo browser');
           }}
         />
       )}
