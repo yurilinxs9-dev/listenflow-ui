@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useUserStatus } from "@/hooks/useUserStatus";
 import { AccessDenied } from "@/components/AccessDenied";
+import { VirtualAudiobookList } from "@/components/VirtualAudiobookList";
 
 interface Audiobook {
   id: string;
@@ -146,18 +147,16 @@ const Search = () => {
                       );
                     })
                   ) : (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
-                      {audiobooks.map((audiobook) => (
-                        <AudiobookCard
-                          key={audiobook.id}
-                          id={audiobook.id}
-                          title={audiobook.title}
-                          author={audiobook.author}
-                          duration={formatDuration(audiobook.duration_seconds)}
-                          cover={audiobook.cover_url}
-                        />
-                      ))}
-                    </div>
+                    /* OTIMIZAÇÃO: Virtual scrolling para muitos resultados */
+                    <VirtualAudiobookList 
+                      audiobooks={audiobooks.map((audiobook) => ({
+                        id: audiobook.id,
+                        title: audiobook.title,
+                        author: audiobook.author,
+                        duration: formatDuration(audiobook.duration_seconds),
+                        cover: audiobook.cover_url,
+                      }))}
+                    />
                   )}
                 </div>
               </div>

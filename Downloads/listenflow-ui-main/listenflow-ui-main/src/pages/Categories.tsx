@@ -6,6 +6,7 @@ import { useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useUserStatus } from "@/hooks/useUserStatus";
 import { AccessDenied } from "@/components/AccessDenied";
+import { VirtualAudiobookList } from "@/components/VirtualAudiobookList";
 
 const Categories = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -113,10 +114,13 @@ const Categories = () => {
               <p className="text-muted-foreground">Carregando audiobooks...</p>
             </div>
           ) : audiobooks.length > 0 ? (
-            <CategoryRow
-              title={selectedGenre ? `Gênero: ${selectedGenre}` : "Todos os Audiobooks"}
-              audiobooks={audiobooks}
-            />
+            <div>
+              <h2 className="text-xl md:text-2xl font-bold mb-6">
+                {selectedGenre ? `Gênero: ${selectedGenre}` : "Todos os Audiobooks"}
+              </h2>
+              {/* OTIMIZAÇÃO: Virtual scrolling para listas grandes (>20 itens) */}
+              <VirtualAudiobookList audiobooks={audiobooks} />
+            </div>
           ) : (
             <div className="py-20 text-center">
               <p className="text-muted-foreground">
