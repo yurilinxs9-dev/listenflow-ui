@@ -661,6 +661,14 @@ export type Database = {
         Args: { audiobook_id: string }
         Returns: undefined
       }
+      is_approved_admin: {
+        Args: { _user_id: string }
+        Returns: boolean
+      }
+      is_user_approved: {
+        Args: { _user_id: string }
+        Returns: boolean
+      }
       log_security_event: {
         Args: {
           p_action: string
